@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="UCrop">
+        <attr name="ucrop_color_toolbar" format="color|reference" />
+        <attr name="ucrop_color_statusbar" format="color|reference" />
+        <attr name="ucrop_toolbar_widget_color" format="color|reference" />
+        <attr name="ucrop_toolbar_title_margin_top" format="dimension" />
+        <attr name="ucrop_root_view_padding_top" format="dimension" />
+        <attr name="ucrop_root_view_padding_bottom" format="dimension" />
+        <attr name="ucrop_color_widget_background" format="color|reference" />
+        <attr name="ucrop_widget_crop_dimmed_layer" format="color|reference" />
+    </declare-styleable>
+</resources>

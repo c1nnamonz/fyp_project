@@ -26,7 +26,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
   List<Map<String, dynamic>> _expiringItems = [];
   bool _loadingExpiringItems = true;
   List<Map<String, dynamic>> _ingredientBasedRecipes = [];
-  List<Map<String, dynamic>> _expiringItemRecipes = [];
   bool _loadingIngredientRecipes = true;
 
   @override
@@ -119,10 +118,14 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
           final daysLeft = expiryDate.difference(now).inDays;
 
           if (daysLeft <= 5 && daysLeft >= 0) {
+            // Fetch recipes specifically for this item
+            final itemRecipes = await _fetchRecipesForSpecificItem(data['name']);
+
             items.add({
               ...data,
               'daysLeft': daysLeft,
               'expiryFormatted': _formatExpiryText(daysLeft),
+              'matchingRecipes': itemRecipes, // Store recipes for each item
             });
           }
         }
@@ -130,11 +133,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
 
       items.sort((a, b) => a['daysLeft'].compareTo(b['daysLeft']));
       items = items.take(3).toList();
-
-      // Fetch recipes for expiring items
-      if (items.isNotEmpty) {
-        await _fetchRecipesForExpiringItems(items);
-      }
 
       setState(() {
         _expiringItems = items;
@@ -146,32 +144,29 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
     }
   }
 
-  Future<void> _fetchRecipesForExpiringItems(List<Map<String, dynamic>> items) async {
+  Future<List<Map<String, dynamic>>> _fetchRecipesForSpecificItem(String itemName) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) return [];
 
       // Get all ingredients
       final ingredientsRef = FirebaseFirestore.instance.collection('ingredients');
       final ingredientsQuery = await ingredientsRef.get();
 
-      // Create a set to store recipe IDs that match expiring items
+      // Create a set to store recipe IDs that match this specific item
       Set<String> matchingRecipeIds = {};
 
-      // Check each ingredient to see if it matches expiring items
+      // Check each ingredient to see if it matches this specific item
       for (var ingredientDoc in ingredientsQuery.docs) {
         final ingredientData = ingredientDoc.data();
         final ingredientName = (ingredientData['name'] as String).toLowerCase();
         final recipeId = ingredientData['recipeId'] as String?;
 
         if (recipeId != null) {
-          // Check if ingredient name matches any of expiring items
-          for (var item in items) {
-            final itemName = (item['name'] as String).toLowerCase();
-            if (_isIngredientMatch(ingredientName, itemName)) {
-              matchingRecipeIds.add(recipeId);
-              break;
-            }
+          // Check if ingredient name matches this specific item
+          final itemNameLower = itemName.toLowerCase();
+          if (_isIngredientMatch(ingredientName, itemNameLower)) {
+            matchingRecipeIds.add(recipeId);
           }
         }
       }
@@ -202,11 +197,10 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
         }
       }
 
-      setState(() {
-        _expiringItemRecipes = matchingRecipes.take(3).toList();
-      });
+      return matchingRecipes.take(3).toList();
     } catch (error) {
-      print('Error fetching recipes for expiring items: $error');
+      print('Error fetching recipes for specific item: $error');
+      return [];
     }
   }
 
@@ -300,29 +294,52 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
   }
 
   bool _isIngredientMatch(String ingredientName, String userItemName) {
+    // Clean both strings - remove extra spaces and convert to lowercase
+    ingredientName = ingredientName.trim().toLowerCase();
+    userItemName = userItemName.trim().toLowerCase();
+
     // Direct match
     if (ingredientName == userItemName) return true;
 
-    // Contains match (ingredient contains user item or vice versa)
-    if (ingredientName.contains(userItemName) || userItemName.contains(ingredientName)) {
+    // More specific matching logic
+    // Only match if there's a meaningful similarity
+
+    // Check if ingredient contains the user item (e.g., "chicken breast" contains "chicken")
+    if (ingredientName.contains(userItemName) && userItemName.length > 3) {
+      return true;
+    }
+
+    // Check if user item contains the ingredient (e.g., "whole chicken" contains "chicken")
+    if (userItemName.contains(ingredientName) && ingredientName.length > 3) {
       return true;
     }
 
     // Specific matches for common variations
     Map<String, List<String>> commonMatches = {
-      'cereal': ['corn flakes', 'cereals', 'breakfast cereal'],
-      'corn flakes': ['cereal', 'cereals'],
-      'milk': ['dairy milk', 'fresh milk', 'whole milk'],
-      'chicken': ['chicken breast', 'chicken thigh', 'whole chicken'],
-      'fish': ['salmon', 'tuna', 'cod', 'tilapia'],
-      'egg': ['eggs', 'chicken egg'],
-      'onion': ['onions', 'yellow onion', 'white onion'],
+      'chicken': ['chicken breast', 'chicken thigh', 'whole chicken', 'chicken wing', 'chicken drumstick'],
+      'fish': ['salmon', 'tuna', 'cod', 'tilapia', 'mackerel'],
+      'egg': ['eggs', 'egg', 'duck egg'],
+      'onion': ['onions', 'yellow onion', 'white onion', 'red onion'],
+      'milk': ['dairy milk', 'fresh milk', 'whole milk', 'skim milk'],
+      'rice': ['white rice', 'brown rice', 'basmati rice', 'jasmine rice'],
+      'flour': ['wheat flour', 'all purpose flour', 'plain flour'],
     };
 
+    // Check if ingredient matches any common variations
     for (String key in commonMatches.keys) {
-      if ((ingredientName.contains(key) && commonMatches[key]!.any((match) => userItemName.contains(match))) ||
-          (userItemName.contains(key) && commonMatches[key]!.any((match) => ingredientName.contains(match)))) {
-        return true;
+      if (ingredientName.contains(key)) {
+        for (String match in commonMatches[key]!) {
+          if (userItemName.contains(match) || match.contains(userItemName)) {
+            return true;
+          }
+        }
+      }
+      if (userItemName.contains(key)) {
+        for (String match in commonMatches[key]!) {
+          if (ingredientName.contains(match) || match.contains(ingredientName)) {
+            return true;
+          }
+        }
       }
     }
 
@@ -598,6 +615,8 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                 itemCount: _expiringItems.length,
                 itemBuilder: (context, index) {
                   final item = _expiringItems[index];
+                  final itemRecipes = item['matchingRecipes'] as List<Map<String, dynamic>>? ?? [];
+
                   return Padding(
                     padding: EdgeInsets.only(right: index < _expiringItems.length - 1 ? 15.0 : 0),
                     child: Container(
@@ -701,8 +720,8 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                               ),
                             ],
                           ),
-                          // Show matching recipes for this item if available
-                          if (_expiringItemRecipes.isNotEmpty) ...[
+                          // Show matching recipes for this specific item
+                          if (itemRecipes.isNotEmpty) ...[
                             const SizedBox(height: 5),
                             Text(
                               'Matching Recipes:',
@@ -717,9 +736,9 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                               height: 32,
                               child: ListView.builder(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: _expiringItemRecipes.length,
+                                itemCount: itemRecipes.length,
                                 itemBuilder: (context, recipeIndex) {
-                                  final recipe = _expiringItemRecipes[recipeIndex];
+                                  final recipe = itemRecipes[recipeIndex];
                                   return GestureDetector(
                                     onTap: () {
                                       Navigator.push(
@@ -741,6 +760,16 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                                     ),
                                   );
                                 },
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              'No matching recipes found',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ],

@@ -14,8 +14,17 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
   String? selectedCategory; // Tracks the selected category (Wet/Dry)
   String? selectedSubcategory; // Tracks the selected subcategory
   String? selectedStatus; // Tracks the selected status
+  String selectedSortOption = 'Default'; // Default sorting option
   bool isLoading = true;
   List<Map<String, dynamic>> groceryItems = [];
+
+  // Sort options
+  final List<String> _sortOptions = [
+    'Default',
+    'Expiring Soon',
+    'Recently Added',
+    'Alphabetical (A-Z)',
+  ];
 
   // Category options mapping (same as in AddItemPage)
   final Map<String, List<String>> _categoryOptions = {
@@ -77,6 +86,55 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
     } catch (e) {
       print('Error parsing expiry date: $e');
       return false; // Don't mark as expired if we can't parse the date
+    }
+  }
+
+  // Calculate days until expiry for sorting and display
+  int _getDaysUntilExpiry(String expiryDateStr) {
+    try {
+      final DateTime expiryDate = DateFormat('yyyy-MM-dd').parse(expiryDateStr);
+      final DateTime today = DateTime.now();
+      final DateTime todayOnly = DateTime(today.year, today.month, today.day);
+      final DateTime expiryOnly = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
+
+      // Return the difference in days, negative if already expired
+      return expiryOnly.difference(todayOnly).inDays;
+    } catch (e) {
+      print('Error calculating days until expiry: $e');
+      return 999; // Return a large number for invalid dates to sort them last
+    }
+  }
+
+  // Sort items based on selected sort option
+  void _sortItems() {
+    switch (selectedSortOption) {
+      case 'Expiring Soon':
+      // Sort items by expiry date (closest to expiry first)
+        groceryItems.sort((a, b) {
+          // Only compare items that are in stock
+          if (a['status'] == 'In-stock' && b['status'] == 'In-stock') {
+            final int daysA = _getDaysUntilExpiry(a['expiresOn']);
+            final int daysB = _getDaysUntilExpiry(b['expiresOn']);
+            return daysA.compareTo(daysB);
+          } else if (a['status'] == 'In-stock') {
+            return -1; // a comes first if it's in stock
+          } else if (b['status'] == 'In-stock') {
+            return 1; // b comes first if it's in stock
+          } else {
+            return 0; // Both are not in stock, keep existing order
+          }
+        });
+        break;
+      case 'Alphabetical (A-Z)':
+        groceryItems.sort((a, b) => a['name'].toString().toLowerCase().compareTo(b['name'].toString().toLowerCase()));
+        break;
+      case 'Recently Added':
+      // If you have a timestamp for when items were added, you could sort by that here
+      // For now, let's keep the default order which is likely the order items were added to Firestore
+        break;
+      default:
+      // Default sorting is already applied from Firestore
+        break;
     }
   }
 
@@ -180,6 +238,9 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
           'isExpired': data['expiryDate'] != null && data['expiryDate'].isNotEmpty
               ? _isItemExpired(data['expiryDate'])
               : false,
+          'daysUntilExpiry': data['expiryDate'] != null && data['expiryDate'].isNotEmpty
+              ? _getDaysUntilExpiry(data['expiryDate'])
+              : 999, // Add days until expiry for sorting
           'wasAutoUpdated': _wasAutoUpdatedToWasted(data), // New field to track auto-updates
           'autoUpdatedAt': data['autoUpdatedAt'], // Keep the timestamp
         };
@@ -197,6 +258,8 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
 
       setState(() {
         groceryItems = items;
+        // Apply sorting
+        _sortItems();
         isLoading = false;
       });
     } catch (e) {
@@ -377,6 +440,19 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
     }
   }
 
+  // Format days until expiry for display
+  String formatDaysUntilExpiry(int days) {
+    if (days < 0) {
+      return 'Expired ${days.abs()} days ago';
+    } else if (days == 0) {
+      return 'Expires today!';
+    } else if (days == 1) {
+      return 'Expires tomorrow';
+    } else {
+      return 'Expires in $days days';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -399,6 +475,7 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
                 ],
               ),
             ),
+
             // Category Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -443,7 +520,7 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
             ),
             const SizedBox(height: 20),
 
-            // Subcategory and Status Dropdowns in a Column
+            // Subcategory, Status, and Sort Dropdowns in a Column
             if (selectedCategory != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 80.0),
@@ -475,6 +552,7 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
                       },
                     ),
                     const SizedBox(height: 15), // Space between dropdowns
+
                     // Status Dropdown
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
@@ -496,6 +574,34 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
                           setState(() {
                             selectedStatus = newValue;
                             _fetchItems();
+                          });
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 15), // Space between dropdowns
+
+                    // Sort Option Dropdown (NEW)
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Sort By',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        prefixIcon: const Icon(Icons.sort),
+                      ),
+                      value: selectedSortOption,
+                      items: _sortOptions.map((String option) {
+                        return DropdownMenuItem<String>(
+                          value: option,
+                          child: Text(option),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            selectedSortOption = newValue;
+                            _sortItems(); // Apply sorting immediately
                           });
                         }
                       },
@@ -541,6 +647,10 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
   // Reusable Widget for Grocery Item with BoxDecoration and tap functionality
   Widget _buildGroceryItem(Map<String, dynamic> item) {
     final bool wasAutoUpdated = item['wasAutoUpdated'] ?? false;
+    final int daysUntilExpiry = item['daysUntilExpiry'] ?? 999;
+
+    // Show expiry warning for items expiring soon (less than 3 days) but not yet expired
+    final bool showExpiryWarning = item['status'] == 'In-stock' && daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
@@ -550,7 +660,11 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: wasAutoUpdated ? Border.all(color: Colors.red.shade300, width: 2) : null,
+            border: wasAutoUpdated
+                ? Border.all(color: Colors.red.shade300, width: 2)
+                : showExpiryWarning
+                ? Border.all(color: Colors.orange.shade300, width: 2)
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.grey.withOpacity(0.3),
@@ -590,6 +704,34 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
                       ],
                     ),
                   ),
+
+                // Expiring soon warning - only show for items that are expiring soon
+                if (showExpiryWarning)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    margin: EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      border: Border.all(color: Colors.orange.shade200),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.access_time, color: Colors.orange, size: 18),
+                        SizedBox(width: 6),
+                        Text(
+                          formatDaysUntilExpiry(daysUntilExpiry),
+                          style: TextStyle(
+                            color: Colors.orange.shade800,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -683,13 +825,36 @@ class _ItemListHouseholdState extends State<ItemListHousehold> {
                                 TextSpan(
                                   text: formatExpiryDate(item['expiresOn']),
                                   style: TextStyle(
-                                    color: item['isExpired'] ? Colors.red : Colors.orange,
-                                    fontWeight: item['isExpired'] ? FontWeight.bold : FontWeight.normal,
+                                    color: item['isExpired'] ? Colors.red :
+                                    (daysUntilExpiry <= 3) ? Colors.orange : Colors.green,
+                                    fontWeight: (item['isExpired'] || daysUntilExpiry <= 3) ? FontWeight.bold : FontWeight.normal,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(height: 5),
+                          // Display days until expiry for items that are in stock
+                          if (item['status'] == 'In-stock' && item['expiresOn'] != 'Unknown')
+                            RichText(
+                              text: TextSpan(
+                                style: TextStyle(fontSize: 15, color: Colors.black),
+                                children: [
+                                  TextSpan(
+                                    text: 'Status: ',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                  TextSpan(
+                                    text: formatDaysUntilExpiry(daysUntilExpiry),
+                                    style: TextStyle(
+                                      color: item['isExpired'] ? Colors.red :
+                                      (daysUntilExpiry <= 3) ? Colors.orange : Colors.green,
+                                      fontWeight: (item['isExpired'] || daysUntilExpiry <= 3) ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           const SizedBox(height: 5),
                           RichText(
                             text: TextSpan(

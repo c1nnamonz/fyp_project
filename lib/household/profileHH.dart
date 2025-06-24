@@ -3,6 +3,7 @@ import 'package:fyp_project/theme/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fyp_project/auth/welcome_screen.dart';
+import 'package:fyp_project/household/faq_screen.dart'; // Import the new FAQ screen
 import '../widget/profile_widget.dart';
 
 class ProfileHousehold extends StatefulWidget {
@@ -102,16 +103,11 @@ class _ProfileHouseholdState extends State<ProfileHousehold> {
 
   void _handleProfileWidgetTap(String title) {
     switch (title) {
-      case 'My Profile':
-      // TODO: Navigate to profile editing screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('My Profile clicked')),
-        );
-        break;
       case 'FAQs':
-      // TODO: Navigate to FAQs screen
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('FAQs clicked')),
+      // Navigate to the FAQ screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const FAQScreen()),
         );
         break;
       case 'Logout':
@@ -185,13 +181,6 @@ class _ProfileHouseholdState extends State<ProfileHousehold> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    GestureDetector(
-                      onTap: () => _handleProfileWidgetTap('My Profile'),
-                      child: const ProfileWidget(
-                        icon: Icons.person,
-                        title: 'My Profile',
-                      ),
-                    ),
                     GestureDetector(
                       onTap: () => _handleProfileWidgetTap('FAQs'),
                       child: const ProfileWidget(

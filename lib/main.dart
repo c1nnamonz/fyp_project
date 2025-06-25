@@ -10,7 +10,7 @@ void main() async{
   if(kIsWeb) {
     await Firebase.initializeApp(options: FirebaseOptions(
         apiKey: "AIzaSyAgiIe1xG9frt2XAuNm-QBttsRfEAYi3H4",
-        authDomain: "fyp-project-a1d73.firebaseapp.com",
+        authDomain: "fyp-project  -a1d73.firebaseapp.com",
         projectId: "fyp-project-a1d73",
         storageBucket: "fyp-project-a1d73.firebasestorage.app",
         messagingSenderId: "1088962417125",

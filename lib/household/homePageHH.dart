@@ -211,9 +211,12 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Step 1: Get user's items
+      // Step 1: Get user's items - ONLY IN-STOCK items
       final itemsRef = FirebaseFirestore.instance.collection('items');
-      final itemsQuery = await itemsRef.where('userId', isEqualTo: user.uid).get();
+      final itemsQuery = await itemsRef
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'In-stock')  // Added this filter
+          .get();
 
       if (itemsQuery.docs.isEmpty) {
         setState(() {
@@ -230,7 +233,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       // Create a set to store recipe IDs that match user's items
       Set<String> matchingRecipeIds = {};
 
-      // Get user's item names for comparison
+      // Get user's item names for comparison - only from in-stock items
       List<String> userItemNames = itemsQuery.docs
           .map((doc) => (doc.data()['name'] as String).toLowerCase())
           .toList();

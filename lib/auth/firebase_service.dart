@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+// 🚀 Import your push notification service
+import '../pushnotificationService.dart';
 
 class FirebaseService {
   static Future<void> initialize() async {
@@ -27,7 +29,11 @@ class FirebaseService {
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'signInMethod': 'email',
+        'fcmTokens': [], // Initialize empty FCM tokens array
       });
+
+      // 🔔 Notify push notification service about user change
+      await PushNotificationService.onUserChanged();
 
       return userCredential.user;
     } catch (e) {
@@ -44,6 +50,10 @@ class FirebaseService {
         email: email,
         password: password,
       );
+
+      // 🔔 Notify push notification service about user change
+      await PushNotificationService.onUserChanged();
+
       return userCredential.user;
     } catch (e) {
       print("Sign in error: $e");
@@ -82,8 +92,12 @@ class FirebaseService {
           'photoURL': userCredential.user?.photoURL ?? '',
           'createdAt': FieldValue.serverTimestamp(),
           'signInMethod': 'google',
+          'fcmTokens': [], // Initialize empty FCM tokens array
         });
       }
+
+      // 🔔 Notify push notification service about user change
+      await PushNotificationService.onUserChanged();
 
       return userCredential.user;
     } catch (e) {
@@ -95,6 +109,9 @@ class FirebaseService {
   // Sign out from both Firebase and Google
   static Future<void> signOut() async {
     try {
+      // 🔔 Notify push notification service BEFORE signing out
+      await PushNotificationService.onUserChanged();
+
       await Future.wait([
         _auth.signOut(),
         _googleSignIn.signOut(),
@@ -129,6 +146,9 @@ class FirebaseService {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
+        // Delete user-specific notification data
+        await PushNotificationService.clearNotificationHistory();
+
         // Delete user data from Firestore
         await _firestore.collection('users').doc(user.uid).delete();
 
@@ -154,6 +174,12 @@ class FirebaseService {
       if (user != null) {
         await user.updateDisplayName(displayName);
         await user.updatePhotoURL(photoURL);
+
+        // Update Firestore document as well
+        await _firestore.collection('users').doc(user.uid).update({
+          if (displayName != null) 'fullName': displayName,
+          if (photoURL != null) 'photoURL': photoURL,
+        });
       }
     } catch (e) {
       print("Update profile error: $e");
@@ -172,5 +198,27 @@ class FirebaseService {
       print("Send email verification error: $e");
       rethrow;
     }
+  }
+
+  // 🆕 NEW: Additional helper methods for push notifications
+
+  // Force expiry check for current user (useful for testing)
+  static Future<void> forceExpiryCheck() async {
+    await PushNotificationService.forceExpiryCheck();
+  }
+
+  // Manual expiry check for current user
+  static Future<void> checkExpiringItems() async {
+    await PushNotificationService.manualExpiryCheck();
+  }
+
+  // Clean up old notification data (call periodically)
+  static Future<void> cleanupNotificationData() async {
+    await PushNotificationService.cleanupOldUserData();
+  }
+
+  // Request notification permission
+  static Future<bool> requestNotificationPermission() async {
+    return await PushNotificationService.requestPermission();
   }
 }

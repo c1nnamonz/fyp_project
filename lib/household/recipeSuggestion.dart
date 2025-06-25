@@ -19,6 +19,7 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
   // Stores ingredient-based recipe suggestions
   List<Map<String, dynamic>> ingredientBasedRecipes = [];
   bool isLoading = true;
+  bool loadingIngredientRecipes = false;
 
   @override
   void initState() {
@@ -47,23 +48,35 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
     return 'images/foodicon.png';
   }
 
-  // Fetch ingredient-based recipe suggestions
+  // UPDATED: Fetch ingredient-based recipe suggestions with corrected logic
   Future<void> fetchIngredientBasedRecipes() async {
     try {
+      setState(() => loadingIngredientRecipes = true);
+
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        setState(() {
+          ingredientBasedRecipes = [];
+          loadingIngredientRecipes = false;
+        });
+        return;
+      }
 
       print('Fetching ingredient-based recipes for user: ${user.uid}');
 
-      // Step 1: Get user's items
+      // Step 1: Get user's items - ONLY IN-STOCK items
       final itemsRef = FirebaseFirestore.instance.collection('items');
-      final itemsQuery = await itemsRef.where('userId', isEqualTo: user.uid).get();
+      final itemsQuery = await itemsRef
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'In-stock')  // Updated to match your working logic
+          .get();
 
-      print('Found ${itemsQuery.docs.length} items for user');
+      print('Found ${itemsQuery.docs.length} in-stock items for user');
 
       if (itemsQuery.docs.isEmpty) {
         setState(() {
           ingredientBasedRecipes = [];
+          loadingIngredientRecipes = false;
         });
         return;
       }
@@ -77,12 +90,12 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
       // Create a set to store recipe IDs that match user's items
       Set<String> matchingRecipeIds = {};
 
-      // Get user's item names for comparison
+      // Get user's item names for comparison - only from in-stock items
       List<String> userItemNames = itemsQuery.docs
           .map((doc) => (doc.data()['name'] as String).toLowerCase())
           .toList();
 
-      print('User items: $userItemNames');
+      print('User in-stock items: $userItemNames');
 
       // Check each ingredient to see if it matches user's items
       for (var ingredientDoc in ingredientsQuery.docs) {
@@ -91,7 +104,6 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
         final recipeId = ingredientData['recipeId'] as String?;
 
         if (recipeId != null) {
-          // Check if ingredient name matches any of user's items (fuzzy matching)
           for (String userItem in userItemNames) {
             if (_isIngredientMatch(ingredientName, userItem)) {
               matchingRecipeIds.add(recipeId);
@@ -136,14 +148,80 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
       print('Found ${matchingRecipes.length} matching recipes');
 
       setState(() {
-        ingredientBasedRecipes = matchingRecipes;
+        ingredientBasedRecipes = matchingRecipes; // Show all matching recipes, not limited to 3
+        loadingIngredientRecipes = false;
       });
 
     } catch (error) {
       print('Error fetching ingredient-based recipes: $error');
       setState(() {
         ingredientBasedRecipes = [];
+        loadingIngredientRecipes = false;
       });
+    }
+  }
+
+  // ADDED: Method to fetch recipes for a specific item (from your homepage logic)
+  Future<List<Map<String, dynamic>>> fetchRecipesForSpecificItem(String itemName) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return [];
+
+      // Get all ingredients
+      final ingredientsRef = FirebaseFirestore.instance.collection('ingredients');
+      final ingredientsQuery = await ingredientsRef.get();
+
+      // Create a set to store recipe IDs that match this specific item
+      Set<String> matchingRecipeIds = {};
+
+      // Check each ingredient to see if it matches this specific item
+      for (var ingredientDoc in ingredientsQuery.docs) {
+        final ingredientData = ingredientDoc.data();
+        final ingredientName = (ingredientData['name'] as String).toLowerCase();
+        final recipeId = ingredientData['recipeId'] as String?;
+
+        if (recipeId != null) {
+          // Check if ingredient name matches this specific item
+          final itemNameLower = itemName.toLowerCase();
+          if (_isIngredientMatch(ingredientName, itemNameLower)) {
+            matchingRecipeIds.add(recipeId);
+          }
+        }
+      }
+
+      // Fetch the matching recipes
+      List<Map<String, dynamic>> matchingRecipes = [];
+
+      if (matchingRecipeIds.isNotEmpty) {
+        final recipesRef = FirebaseFirestore.instance.collection('recipes');
+
+        // Fetch recipes in batches (Firestore 'in' query has a limit of 10)
+        List<String> recipeIdsList = matchingRecipeIds.toList();
+        for (int i = 0; i < recipeIdsList.length; i += 10) {
+          int end = (i + 10 < recipeIdsList.length) ? i + 10 : recipeIdsList.length;
+          List<String> batch = recipeIdsList.sublist(i, end);
+
+          final batchQuery = await recipesRef.where(FieldPath.documentId, whereIn: batch).get();
+
+          for (var recipeDoc in batchQuery.docs) {
+            final recipeData = recipeDoc.data();
+            matchingRecipes.add({
+              'id': recipeDoc.id,
+              'name': recipeData['name'] ?? 'Unknown Recipe',
+              'timeRequired': recipeData['timeRequired'] ?? 'Unknown',
+              'imageUrl': recipeData['imageUrl'] ?? '',
+              'category': recipeData['category'] ?? 'Uncategorized',
+              'description': recipeData['description'] ?? '',
+              'instructions': recipeData['instructions'] ?? '',
+            });
+          }
+        }
+      }
+
+      return matchingRecipes.take(3).toList();
+    } catch (error) {
+      print('Error fetching recipes for specific item: $error');
+      return [];
     }
   }
 
@@ -396,13 +474,13 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
             ),
             const SizedBox(height: 18),
 
-            // Ingredient-based recipes section
-            if (ingredientBasedRecipes.isNotEmpty) ...[
-              _buildIngredientBasedSection(),
-              _buildBeautifulSeparator(),
-            ],
+            // ALWAYS show ingredient-based recipes section
+            _buildIngredientBasedSection(),
 
-            // Display recipes for each category
+            // ALWAYS show the separator
+            _buildBeautifulSeparator(),
+
+            // ALWAYS display recipes for each category
             for (final category in recipesByCategory.keys)
               _buildCategorySection(category, recipesByCategory[category]!),
           ],
@@ -512,7 +590,7 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
     );
   }
 
-  // Build the ingredient-based recipes section
+  // Build the ingredient-based recipes section (UPDATED to handle loading state)
   Widget _buildIngredientBasedSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,7 +612,11 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
         const SizedBox(height: 8),
         Container(
           height: 240,
-          child: ListView.builder(
+          child: loadingIngredientRecipes
+              ? Center(child: CircularProgressIndicator())
+              : ingredientBasedRecipes.isEmpty
+              ? _buildEmptyIngredientsMessage()
+              : ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 22.0),
             itemCount: ingredientBasedRecipes.length,
@@ -546,6 +628,50 @@ class _RecipeSuggestionState extends State<RecipeSuggestion> {
         ),
         const SizedBox(height: 18),
       ],
+    );
+  }
+
+  // Build empty ingredients message
+  Widget _buildEmptyIngredientsMessage() {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 22.0),
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey[300]!, width: 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No recipes found for your current ingredients',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add more items to your inventory to get personalized recipe suggestions!',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

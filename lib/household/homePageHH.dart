@@ -7,6 +7,8 @@ import 'package:fyp_project/household/recipeSuggestion.dart';
 import 'package:fyp_project/household/rootPageHH.dart';
 import 'package:fyp_project/theme/theme.dart';
 import 'package:intl/intl.dart';
+import 'package:fyp_project/ai/ai_recipe_service.dart';
+import 'package:fyp_project/ai/ai_recipe_details.dart';
 
 class HomePageHousehold extends StatefulWidget {
   const HomePageHousehold({super.key});
@@ -21,19 +23,379 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
   bool _isLoading = true;
   int _dryGroceryCount = 0;
   int _wetGroceryCount = 0;
-  List<Map<String, dynamic>> _recipes = [];
-  bool _loadingRecipes = true;
   List<Map<String, dynamic>> _expiringItems = [];
   bool _loadingExpiringItems = true;
-  List<Map<String, dynamic>> _ingredientBasedRecipes = [];
-  bool _loadingIngredientRecipes = true;
+  List<Map<String, dynamic>> _aiGeneratedRecipes = [];
+  bool _loadingAIRecipes = false;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
-    _fetchIngredientBasedRecipes();
+    _fetchAIRecipeSuggestions();
     _fetchExpiringItems();
+  }
+
+  Future<void> _fetchAIRecipeSuggestions() async {
+    try {
+      setState(() => _loadingAIRecipes = true);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        setState(() => _loadingAIRecipes = false);
+        return;
+      }
+
+      // Get user's available ingredients from Firebase
+      final itemsRef = FirebaseFirestore.instance.collection('items');
+      final itemsQuery = await itemsRef
+          .where('userId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'In-stock')
+          .get();
+
+      if (itemsQuery.docs.isEmpty) {
+        setState(() {
+          _aiGeneratedRecipes = [];
+          _loadingAIRecipes = false;
+        });
+        return;
+      }
+
+      // Extract ingredient names
+      List<String> availableIngredients = itemsQuery.docs
+          .map((doc) => doc.data()['name'] as String)
+          .toList();
+
+      // Get expiring ingredients
+      List<String> expiringIngredients = _expiringItems
+          .map((item) => item['name'] as String)
+          .toList();
+
+      // Generate AI recipe suggestions
+      final aiRecipes = await AIRecipeService.generateRecipeSuggestions(
+        availableIngredients: availableIngredients,
+        expiringIngredients: expiringIngredients,
+        maxRecipes: 5,
+      );
+
+      setState(() {
+        _aiGeneratedRecipes = aiRecipes;
+        _loadingAIRecipes = false;
+      });
+
+    } catch (error) {
+      print('Error fetching AI recipe suggestions: $error');
+      setState(() {
+        _aiGeneratedRecipes = [];
+        _loadingAIRecipes = false;
+      });
+      
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to load AI recipe suggestions. Please check your internet connection.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  // Add this method to build the AI recipe section
+  Widget _buildAIRecipeSection() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'AI Recipe ',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: lightColorScheme.primary,
+                        ),
+                      ),
+                      Text(
+                        'Suggestions',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.auto_awesome,
+                        color: Colors.amber,
+                        size: 24,
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // Refresh AI recipes
+                      _fetchAIRecipeSuggestions();
+                    },
+                    child: Text(
+                      'Refresh',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 15),
+        Container(
+          height: 280,
+          child: _loadingAIRecipes
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(lightColorScheme.primary),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Generating AI recipes...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : _aiGeneratedRecipes.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_outlined,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'No AI recipe suggestions available',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          Text(
+                            'Add some ingredients to get started!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                      itemCount: _aiGeneratedRecipes.length,
+                      itemBuilder: (context, index) {
+                        final recipe = _aiGeneratedRecipes[index];
+                        return _buildAIRecipeCard(recipe);
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIRecipeCard(Map<String, dynamic> recipe) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AIRecipeDetails(recipe: recipe),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(right: 14.0),
+        child: Container(
+          width: 210,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Recipe Image
+              Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                  child: recipe['imageUrl'] != null && recipe['imageUrl'].isNotEmpty
+                      ? Image.network(
+                          recipe['imageUrl'],
+                          width: double.infinity,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildImagePlaceholder();
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 120,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : _buildImagePlaceholder(),
+                ),
+              ),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // AI Badge
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 12, color: Colors.purple),
+                          SizedBox(width: 2),
+                          Text(
+                            'AI',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    
+                    // Recipe Name
+                    Text(
+                      recipe['name'] ?? 'AI Recipe',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 6),
+                    
+                    // Time and Difficulty
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: lightColorScheme.primary),
+                        SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            recipe['timeRequired'] ?? 'Unknown',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.bar_chart, size: 14, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Text(
+                          recipe['difficulty'] ?? 'Medium',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: 120,
+      color: Colors.grey[200],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.restaurant_menu,
+            size: 30,
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Recipe Image',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _fetchUserData() async {
@@ -99,7 +461,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       if (user == null) return;
 
       final now = DateTime.now();
-      final fiveDaysFromNow = now.add(const Duration(days: 5));
 
       final snapshot = await FirebaseFirestore.instance
           .collection('items')
@@ -118,14 +479,10 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
           final daysLeft = expiryDate.difference(now).inDays;
 
           if (daysLeft <= 5 && daysLeft >= 0) {
-            // Fetch recipes specifically for this item
-            final itemRecipes = await _fetchRecipesForSpecificItem(data['name']);
-
             items.add({
               ...data,
               'daysLeft': daysLeft,
               'expiryFormatted': _formatExpiryText(daysLeft),
-              'matchingRecipes': itemRecipes, // Store recipes for each item
             });
           }
         }
@@ -142,211 +499,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       setState(() => _loadingExpiringItems = false);
       print('Error fetching expiring items: $e');
     }
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchRecipesForSpecificItem(String itemName) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return [];
-
-      // Get all ingredients
-      final ingredientsRef = FirebaseFirestore.instance.collection('ingredients');
-      final ingredientsQuery = await ingredientsRef.get();
-
-      // Create a set to store recipe IDs that match this specific item
-      Set<String> matchingRecipeIds = {};
-
-      // Check each ingredient to see if it matches this specific item
-      for (var ingredientDoc in ingredientsQuery.docs) {
-        final ingredientData = ingredientDoc.data();
-        final ingredientName = (ingredientData['name'] as String).toLowerCase();
-        final recipeId = ingredientData['recipeId'] as String?;
-
-        if (recipeId != null) {
-          // Check if ingredient name matches this specific item
-          final itemNameLower = itemName.toLowerCase();
-          if (_isIngredientMatch(ingredientName, itemNameLower)) {
-            matchingRecipeIds.add(recipeId);
-          }
-        }
-      }
-
-      // Fetch the matching recipes
-      List<Map<String, dynamic>> matchingRecipes = [];
-
-      if (matchingRecipeIds.isNotEmpty) {
-        final recipesRef = FirebaseFirestore.instance.collection('recipes');
-
-        // Fetch recipes in batches (Firestore 'in' query has a limit of 10)
-        List<String> recipeIdsList = matchingRecipeIds.toList();
-        for (int i = 0; i < recipeIdsList.length; i += 10) {
-          int end = (i + 10 < recipeIdsList.length) ? i + 10 : recipeIdsList.length;
-          List<String> batch = recipeIdsList.sublist(i, end);
-
-          final batchQuery = await recipesRef.where(FieldPath.documentId, whereIn: batch).get();
-
-          for (var recipeDoc in batchQuery.docs) {
-            final recipeData = recipeDoc.data();
-            matchingRecipes.add({
-              'id': recipeDoc.id,
-              'name': recipeData['name'] ?? 'Unknown Recipe',
-              'category': recipeData['category'] ?? 'Uncategorized',
-              'imageUrl': recipeData['imageUrl'] ?? 'images/default_recipe.jpg',
-            });
-          }
-        }
-      }
-
-      return matchingRecipes.take(3).toList();
-    } catch (error) {
-      print('Error fetching recipes for specific item: $error');
-      return [];
-    }
-  }
-
-  Future<void> _fetchIngredientBasedRecipes() async {
-    try {
-      setState(() => _loadingIngredientRecipes = true);
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      // Step 1: Get user's items - ONLY IN-STOCK items
-      final itemsRef = FirebaseFirestore.instance.collection('items');
-      final itemsQuery = await itemsRef
-          .where('userId', isEqualTo: user.uid)
-          .where('status', isEqualTo: 'In-stock')  // Added this filter
-          .get();
-
-      if (itemsQuery.docs.isEmpty) {
-        setState(() {
-          _ingredientBasedRecipes = [];
-          _loadingIngredientRecipes = false;
-        });
-        return;
-      }
-
-      // Step 2: Get ingredients that match user's items
-      final ingredientsRef = FirebaseFirestore.instance.collection('ingredients');
-      final ingredientsQuery = await ingredientsRef.get();
-
-      // Create a set to store recipe IDs that match user's items
-      Set<String> matchingRecipeIds = {};
-
-      // Get user's item names for comparison - only from in-stock items
-      List<String> userItemNames = itemsQuery.docs
-          .map((doc) => (doc.data()['name'] as String).toLowerCase())
-          .toList();
-
-      // Check each ingredient to see if it matches user's items
-      for (var ingredientDoc in ingredientsQuery.docs) {
-        final ingredientData = ingredientDoc.data();
-        final ingredientName = (ingredientData['name'] as String).toLowerCase();
-        final recipeId = ingredientData['recipeId'] as String?;
-
-        if (recipeId != null) {
-          for (String userItem in userItemNames) {
-            if (_isIngredientMatch(ingredientName, userItem)) {
-              matchingRecipeIds.add(recipeId);
-              break;
-            }
-          }
-        }
-      }
-
-      // Step 3: Fetch the matching recipes
-      List<Map<String, dynamic>> matchingRecipes = [];
-
-      if (matchingRecipeIds.isNotEmpty) {
-        final recipesRef = FirebaseFirestore.instance.collection('recipes');
-
-        // Fetch recipes in batches
-        List<String> recipeIdsList = matchingRecipeIds.toList();
-        for (int i = 0; i < recipeIdsList.length; i += 10) {
-          int end = (i + 10 < recipeIdsList.length) ? i + 10 : recipeIdsList.length;
-          List<String> batch = recipeIdsList.sublist(i, end);
-
-          final batchQuery = await recipesRef.where(FieldPath.documentId, whereIn: batch).get();
-
-          for (var recipeDoc in batchQuery.docs) {
-            final recipeData = recipeDoc.data();
-            matchingRecipes.add({
-              'id': recipeDoc.id,
-              'name': recipeData['name'] ?? 'Unknown Recipe',
-              'category': recipeData['category'] ?? 'Uncategorized',
-              'imageUrl': recipeData['imageUrl'] ?? 'images/default_recipe.jpg',
-            });
-          }
-        }
-      }
-
-      setState(() {
-        _ingredientBasedRecipes = matchingRecipes.take(3).toList();
-        _loadingRecipes = false;
-        _loadingIngredientRecipes = false;
-      });
-
-    } catch (error) {
-      print('Error fetching ingredient-based recipes: $error');
-      setState(() {
-        _ingredientBasedRecipes = [];
-        _loadingRecipes = false;
-        _loadingIngredientRecipes = false;
-      });
-    }
-  }
-
-  bool _isIngredientMatch(String ingredientName, String userItemName) {
-    // Clean both strings - remove extra spaces and convert to lowercase
-    ingredientName = ingredientName.trim().toLowerCase();
-    userItemName = userItemName.trim().toLowerCase();
-
-    // Direct match
-    if (ingredientName == userItemName) return true;
-
-    // More specific matching logic
-    // Only match if there's a meaningful similarity
-
-    // Check if ingredient contains the user item (e.g., "chicken breast" contains "chicken")
-    if (ingredientName.contains(userItemName) && userItemName.length > 3) {
-      return true;
-    }
-
-    // Check if user item contains the ingredient (e.g., "whole chicken" contains "chicken")
-    if (userItemName.contains(ingredientName) && ingredientName.length > 3) {
-      return true;
-    }
-
-    // Specific matches for common variations
-    Map<String, List<String>> commonMatches = {
-      'chicken': ['chicken breast', 'chicken thigh', 'whole chicken', 'chicken wing', 'chicken drumstick'],
-      'fish': ['salmon', 'tuna', 'cod', 'tilapia', 'mackerel'],
-      'egg': ['eggs', 'egg', 'duck egg'],
-      'onion': ['onions', 'yellow onion', 'white onion', 'red onion'],
-      'milk': ['dairy milk', 'fresh milk', 'whole milk', 'skim milk'],
-      'rice': ['white rice', 'brown rice', 'basmati rice', 'jasmine rice'],
-      'flour': ['wheat flour', 'all purpose flour', 'plain flour'],
-    };
-
-    // Check if ingredient matches any common variations
-    for (String key in commonMatches.keys) {
-      if (ingredientName.contains(key)) {
-        for (String match in commonMatches[key]!) {
-          if (userItemName.contains(match) || match.contains(userItemName)) {
-            return true;
-          }
-        }
-      }
-      if (userItemName.contains(key)) {
-        for (String match in commonMatches[key]!) {
-          if (ingredientName.contains(match) || match.contains(ingredientName)) {
-            return true;
-          }
-        }
-      }
-    }
-
-    return false;
   }
 
   String _formatExpiryText(int daysLeft) {
@@ -568,7 +720,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
             ),
             const SizedBox(height: 5),
             Container(
-              height: 330,
+              height: 280,
               child: _loadingExpiringItems
                   ? Center(
                 child: CircularProgressIndicator(
@@ -618,7 +770,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                 itemCount: _expiringItems.length,
                 itemBuilder: (context, index) {
                   final item = _expiringItems[index];
-                  final itemRecipes = item['matchingRecipes'] as List<Map<String, dynamic>>? ?? [];
 
                   return Padding(
                     padding: EdgeInsets.only(right: index < _expiringItems.length - 1 ? 15.0 : 0),
@@ -723,59 +874,6 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                               ),
                             ],
                           ),
-                          // Show matching recipes for this specific item
-                          if (itemRecipes.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Text(
-                              'Matching Recipes:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: lightColorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 5,),
-                            SizedBox(
-                              height: 32,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: itemRecipes.length,
-                                itemBuilder: (context, recipeIndex) {
-                                  final recipe = itemRecipes[recipeIndex];
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => RecipeDetails(recipeId: recipe['id']),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
-                                      child: Chip(
-                                        label: Text(
-                                          recipe['name'],
-                                          style: TextStyle(fontSize: 10),
-                                        ),
-                                        backgroundColor: Colors.green[100],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ] else ...[
-                            const SizedBox(height: 5),
-                            Text(
-                              'No matching recipes found',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -784,188 +882,9 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
               ),
             ),
             const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(25.0, 5.0, 25.0, 5.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Quick ',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: lightColorScheme.primary,
-                            ),
-                          ),
-                          Text(
-                            'Recipe',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xDEFFC717),
-                            ),
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => RecipeSuggestion()),
-                          );
-                        },
-                        child: Text(
-                          'See All',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blueGrey,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 5),
-            Container(
-              height: 280,
-              child: _loadingIngredientRecipes
-                  ? Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(lightColorScheme.primary),
-                ),
-              )
-                  : _ingredientBasedRecipes.isEmpty
-                  ? Center(
-                child: Text(
-                  'No recipes found based on your ingredients',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                itemCount: _ingredientBasedRecipes.length,
-                itemBuilder: (context, index) {
-                  final recipe = _ingredientBasedRecipes[index];
-                  return Padding(
-                    padding: EdgeInsets.only(right: index < _ingredientBasedRecipes.length - 1 ? 15.0 : 0),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RecipeDetails(recipeId: recipe['id']),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 240,
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.3),
-                              spreadRadius: 2,
-                              blurRadius: 5,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    recipe['imageUrl'],
-                                    width: 200,
-                                    height: 150,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset(
-                                        'images/default_recipe.jpg',
-                                        width: 200,
-                                        height: 150,
-                                        fit: BoxFit.cover,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                Text(
-                                  'Name: ',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: lightColorScheme.primary,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    recipe['name'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFD6BC00),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Row(
-                              children: [
-                                Text(
-                                  'Categories: ',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: lightColorScheme.primary,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    recipe['category'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            
+            // AI Recipe Section (replacing the database recipe section)
+            _buildAIRecipeSection(),
             const SizedBox(height: 25),
           ],
         ),

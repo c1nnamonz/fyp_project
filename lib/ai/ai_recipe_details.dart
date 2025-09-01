@@ -282,20 +282,83 @@ class AIRecipeDetails extends StatelessWidget {
             Text('No ingredients listed')
           else
             ...ingredients.map((ingredient) => Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
+              padding: EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: Colors.grey[400]),
+                  // Show different icons for available vs pantry ingredients
+                  Icon(
+                    ingredient['available'] == true ? Icons.check_circle : Icons.shopping_basket,
+                    size: 16,
+                    color: ingredient['available'] == true ? Colors.green : Colors.orange,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '${ingredient['quantity']} ${ingredient['unit']} ${ingredient['name']}',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: ingredient['available'] == true ? Colors.black : Colors.grey[600],
+                      ),
                     ),
                   ),
+                  if (ingredient['available'] == true)
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Available',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Pantry',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             )).toList(),
+          SizedBox(height: 10),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.blue[600]),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Green items are available in your inventory. Orange items are common pantry ingredients.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

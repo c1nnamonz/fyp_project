@@ -42,9 +42,12 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
+        print('No authenticated user for AI recipes');
         setState(() => _loadingAIRecipes = false);
         return;
       }
+
+      print('Fetching AI recipes for user: ${user.uid}');
 
       // Get user's available ingredients from Firebase
       final itemsRef = FirebaseFirestore.instance.collection('items');
@@ -53,35 +56,66 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
           .where('status', isEqualTo: 'In-stock')
           .get();
 
-      if (itemsQuery.docs.isEmpty) {
-        setState(() {
-          _aiGeneratedRecipes = [];
-          _loadingAIRecipes = false;
-        });
-        return;
-      }
+      print('Found ${itemsQuery.docs.length} items for AI recipe generation');
 
       // Extract ingredient names
       List<String> availableIngredients = itemsQuery.docs
-          .map((doc) => doc.data()['name'] as String)
+          .map((doc) {
+            final name = doc.data()['name'] as String?;
+            print('Found ingredient: $name');
+            return name ?? '';
+          })
+          .where((name) => name.isNotEmpty)
           .toList();
+
+      print('Available ingredients for AI: $availableIngredients');
 
       // Get expiring ingredients
       List<String> expiringIngredients = _expiringItems
           .map((item) => item['name'] as String)
           .toList();
 
-      // Generate AI recipe suggestions
+      print('Expiring ingredients: $expiringIngredients');
+
+      // Force clear previous recipes to ensure fresh generation
+      setState(() {
+        _aiGeneratedRecipes = [];
+      });
+
+      // Add small delay to show loading state
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Generate AI recipe suggestions - always try to generate even if no ingredients
       final aiRecipes = await AIRecipeService.generateRecipeSuggestions(
         availableIngredients: availableIngredients,
         expiringIngredients: expiringIngredients,
         maxRecipes: 5,
       );
 
+      print('Generated ${aiRecipes.length} AI recipes');
+
       setState(() {
         _aiGeneratedRecipes = aiRecipes;
         _loadingAIRecipes = false;
       });
+
+      // Show success message when refresh completes
+      if (mounted && aiRecipes.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Generated ${aiRecipes.length} fresh AI recipes!'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
 
     } catch (error) {
       print('Error fetching AI recipe suggestions: $error');
@@ -94,8 +128,21 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Unable to load AI recipe suggestions. Please check your internet connection.'),
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text('Unable to generate new recipes. Please try again.'),
+              ],
+            ),
             backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () => _fetchAIRecipeSuggestions(),
+            ),
+            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -140,16 +187,80 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                     ],
                   ),
                   GestureDetector(
-                    onTap: () {
+                    onTap: _loadingAIRecipes ? null : () {
+                      // Add haptic feedback
+                      // HapticFeedback.lightImpact(); // Uncomment if you want haptic feedback
+                      
+                      // Show immediate visual feedback
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text('Generating fresh AI recipes...'),
+                            ],
+                          ),
+                          backgroundColor: lightColorScheme.primary,
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      
                       // Refresh AI recipes
                       _fetchAIRecipeSuggestions();
                     },
-                    child: Text(
-                      'Refresh',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blueGrey,
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _loadingAIRecipes 
+                          ? Colors.grey.withOpacity(0.3)
+                          : lightColorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: _loadingAIRecipes 
+                            ? Colors.grey
+                            : lightColorScheme.primary.withOpacity(0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_loadingAIRecipes)
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.refresh,
+                              size: 16,
+                              color: lightColorScheme.primary,
+                            ),
+                          SizedBox(width: 4),
+                          Text(
+                            _loadingAIRecipes ? '...' : 'Refresh',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: _loadingAIRecipes 
+                                ? Colors.grey
+                                : lightColorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -166,15 +277,35 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(lightColorScheme.primary),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(lightColorScheme.primary),
+                            strokeWidth: 3,
+                          ),
+                          Icon(
+                            Icons.auto_awesome,
+                            color: Colors.amber,
+                            size: 20,
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 10),
+                      SizedBox(height: 15),
                       Text(
-                        'Generating AI recipes...',
+                        'Creating fresh AI recipes...',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Using your available ingredients',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
                         ),
                       ),
                     ],
@@ -200,7 +331,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                           ),
                           SizedBox(height: 5),
                           Text(
-                            'Add some ingredients to get started!',
+                            'Tap refresh to generate new recipes!',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],

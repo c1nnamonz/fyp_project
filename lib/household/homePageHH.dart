@@ -47,7 +47,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
         return;
       }
 
-      print('Fetching AI recipes for user: ${user.uid}');
+      print('🔥 FETCHING AI RECIPES: Starting full AI recipe generation for user: ${user.uid}');
 
       // Get user's available ingredients from Firebase
       final itemsRef = FirebaseFirestore.instance.collection('items');
@@ -56,26 +56,26 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
           .where('status', isEqualTo: 'In-stock')
           .get();
 
-      print('Found ${itemsQuery.docs.length} items for AI recipe generation');
+      print('📦 FIREBASE INVENTORY: Found ${itemsQuery.docs.length} items in user\'s inventory');
 
       // Extract ingredient names
       List<String> availableIngredients = itemsQuery.docs
           .map((doc) {
             final name = doc.data()['name'] as String?;
-            print('Found ingredient: $name');
+            print('✅ Available ingredient: $name');
             return name ?? '';
           })
           .where((name) => name.isNotEmpty)
           .toList();
 
-      print('Available ingredients for AI: $availableIngredients');
+      print('🥘 INGREDIENT LIST: ${availableIngredients.join(', ')}');
 
       // Get expiring ingredients
       List<String> expiringIngredients = _expiringItems
           .map((item) => item['name'] as String)
           .toList();
 
-      print('Expiring ingredients: $expiringIngredients');
+      print('⏰ EXPIRING INGREDIENTS: ${expiringIngredients.join(', ')}');
 
       // Force clear previous recipes to ensure fresh generation
       setState(() {
@@ -85,14 +85,23 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
       // Add small delay to show loading state
       await Future.delayed(Duration(milliseconds: 500));
 
-      // Generate AI recipe suggestions - always try to generate even if no ingredients
+      print('🤖 AI GENERATION: Creating recipes using Firebase inventory...');
+      
+      // Generate AI recipe suggestions using Firebase ingredients
       final aiRecipes = await AIRecipeService.generateRecipeSuggestions(
         availableIngredients: availableIngredients,
         expiringIngredients: expiringIngredients,
         maxRecipes: 5,
       );
 
-      print('Generated ${aiRecipes.length} AI recipes');
+      print('✨ AI SUCCESS: Generated ${aiRecipes.length} fully AI-powered recipes!');
+      
+      // Log each generated recipe
+      for (int i = 0; i < aiRecipes.length; i++) {
+        final recipe = aiRecipes[i];
+        print('🍽️ Recipe ${i + 1}: ${recipe['name']}');
+        print('   📋 Ingredients: ${(recipe['ingredients'] as List).where((ing) => ing['available'] == true).map((ing) => ing['name']).join(', ')}');
+      }
 
       setState(() {
         _aiGeneratedRecipes = aiRecipes;
@@ -107,18 +116,18 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
               children: [
                 Icon(Icons.auto_awesome, color: Colors.white, size: 20),
                 SizedBox(width: 8),
-                Text('Generated ${aiRecipes.length} fresh AI recipes!'),
+                Text('🤖 Generated ${aiRecipes.length} AI recipes using your inventory!'),
               ],
             ),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
 
     } catch (error) {
-      print('Error fetching AI recipe suggestions: $error');
+      print('❌ ERROR: Failed to generate AI recipes: $error');
       setState(() {
         _aiGeneratedRecipes = [];
         _loadingAIRecipes = false;
@@ -132,7 +141,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
               children: [
                 Icon(Icons.error_outline, color: Colors.white, size: 20),
                 SizedBox(width: 8),
-                Text('Unable to generate new recipes. Please try again.'),
+                Text('Unable to generate AI recipes. Please try again.'),
               ],
             ),
             backgroundColor: Colors.orange,
@@ -293,7 +302,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                       ),
                       SizedBox(height: 15),
                       Text(
-                        'Creating fresh AI recipes...',
+                        'Creating AI recipes from your inventory...',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -302,7 +311,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        'Using your available ingredients',
+                        'Using ingredients from your Firebase database',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[500],
@@ -368,7 +377,7 @@ class _HomePageHouseholdState extends State<HomePageHousehold> {
         padding: const EdgeInsets.only(right: 14.0),
         child: Container(
           width: 210,
-          margin: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),

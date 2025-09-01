@@ -96,11 +96,12 @@ class RecipeImageService {
       
       String query;
       if (canMake && availableIngredients.isNotEmpty) {
-        // Create query with available ingredients for better matching
+        // Create Asian-focused query with available ingredients
         final ingredientString = availableIngredients.take(3).join(' ');
-        query = '$recipeName $category $ingredientString food dish meal recipe cooking';
+        query = '$recipeName $category asian food chinese japanese thai korean vietnamese dish meal recipe cooking $ingredientString';
       } else {
-        query = '$recipeName $category food dish meal recipe cooking';
+        // Focus on Asian cuisine keywords
+        query = '$recipeName $category asian cuisine chinese japanese thai korean food dish meal recipe cooking';
       }
       
       final Uri url = Uri.parse('$_unsplashBaseUrl?query=${Uri.encodeComponent(query)}&per_page=5&orientation=landscape');
@@ -115,18 +116,17 @@ class RecipeImageService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null && data['results'].isNotEmpty) {
-          // Return a random image from results for variety
           final results = data['results'] as List;
           final randomIndex = DateTime.now().millisecond % results.length;
           return results[randomIndex]['urls']['regular'];
         }
       }
 
-      // Fallback to ingredient-based search if recipe-specific search fails
+      // Fallback to Asian ingredient-based search
       if (availableIngredients.isNotEmpty) {
-        return await _getIngredientBasedImage(availableIngredients, category);
+        return await _getAsianIngredientBasedImage(availableIngredients, category);
       } else {
-        return await _getFallbackFoodImage(category);
+        return await _getAsianFallbackFoodImage(category);
       }
       
     } catch (e) {
@@ -135,12 +135,10 @@ class RecipeImageService {
     }
   }
 
-  // Add new method to get images based on available ingredients
-  static Future<String?> _getIngredientBasedImage(List<String> availableIngredients, String category) async {
+  static Future<String?> _getAsianIngredientBasedImage(List<String> availableIngredients, String category) async {
     try {
-      // Use top 3 available ingredients to create search query
       final topIngredients = availableIngredients.take(3).join(' ');
-      String query = '$topIngredients $category recipe dish cooking meal';
+      String query = '$topIngredients $category asian cuisine chinese japanese thai korean recipe dish cooking meal stir fry';
       
       final Uri url = Uri.parse('$_unsplashBaseUrl?query=${Uri.encodeComponent(query)}&per_page=3&orientation=landscape');
       
@@ -158,7 +156,7 @@ class RecipeImageService {
         }
       }
     } catch (e) {
-      print('Error fetching ingredient-based image: $e');
+      print('Error fetching Asian ingredient-based image: $e');
     }
     return null;
   }
@@ -184,19 +182,54 @@ class RecipeImageService {
     }
   }
 
+  static Future<String?> _getAsianFallbackFoodImage(String category) async {
+    try {
+      final asianCategoryQueries = {
+        'Breakfast': 'asian breakfast congee dim sum rice porridge morning meal',
+        'Lunch': 'asian lunch bento box noodle soup ramen pho midday meal',
+        'Dinner': 'asian dinner stir fry curry rice noodles chinese japanese thai evening meal',
+        'Snack': 'asian snack dumplings spring rolls appetizer dim sum',
+        'Dessert': 'asian dessert mochi sweet red bean matcha treat',
+        'Main Course': 'asian main course stir fry curry teriyaki kung pao dish',
+        'Side Dish': 'asian side dish kimchi pickled vegetables steamed rice garnish',
+      };
+
+      String query = asianCategoryQueries[category] ?? 'delicious asian food meal dish chinese japanese thai';
+      
+      final Uri url = Uri.parse('$_unsplashBaseUrl?query=${Uri.encodeComponent(query)}&per_page=3&orientation=landscape');
+      
+      final response = await http.get(
+        url,
+        headers: _unsplashApiKey.isNotEmpty ? {
+          'Authorization': 'Client-ID $_unsplashApiKey',
+        } : {},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null && data['results'].isNotEmpty) {
+          return data['results'][0]['urls']['regular'];
+        }
+      }
+    } catch (e) {
+      print('Error fetching Asian fallback image: $e');
+    }
+    return _getLocalPlaceholder(category);
+  }
+
   static List<String> _getRecipesByIngredient(String ingredient) {
-    final recipeMap = {
-      'chicken': ['Grilled Chicken', 'Chicken Curry', 'Chicken Stir Fry', 'Chicken Soup'],
-      'beef': ['Beef Stew', 'Beef Tacos', 'Grilled Steak', 'Beef Curry'],
-      'rice': ['Fried Rice', 'Rice Bowl', 'Rice Pilaf', 'Rice Pudding'],
-      'pasta': ['Pasta Salad', 'Spaghetti Bolognese', 'Pasta Primavera', 'Mac and Cheese'],
-      'egg': ['Scrambled Eggs', 'Egg Fried Rice', 'Omelette', 'Egg Sandwich'],
-      'tomato': ['Tomato Soup', 'Pasta with Tomatoes', 'Tomato Salad', 'Tomato Curry'],
-      'potato': ['Mashed Potatoes', 'Roasted Potatoes', 'Potato Curry', 'French Fries'],
-      'onion': ['Onion Soup', 'Caramelized Onions', 'Onion Rings', 'Stuffed Onions'],
+    final asianRecipeMap = {
+      'chicken': ['Kung Pao Chicken', 'Chicken Teriyaki', 'Thai Basil Chicken', 'Korean Fried Chicken'],
+      'beef': ['Beef Bulgogi', 'Mongolian Beef', 'Thai Beef Salad', 'Chinese Orange Beef'],
+      'rice': ['Fried Rice', 'Chicken Rice', 'Korean Bibimbap', 'Thai Pineapple Rice'],
+      'noodle': ['Pad Thai', 'Ramen', 'Pho', 'Chow Mein'],
+      'egg': ['Egg Fried Rice', 'Tamagoyaki', 'Thai Omelet', 'Korean Egg Roll'],
+      'tofu': ['Mapo Tofu', 'Agedashi Tofu', 'Korean Kimchi Tofu', 'Thai Tofu Curry'],
+      'pork': ['Char Siu', 'Korean BBQ Pork', 'Vietnamese Pork Banh Mi', 'Sweet and Sour Pork'],
+      'shrimp': ['Honey Walnut Shrimp', 'Thai Shrimp Curry', 'Japanese Tempura', 'Vietnamese Shrimp Rolls'],
     };
     
-    return recipeMap[ingredient.toLowerCase()] ?? ['${ingredient.capitalize()} Recipe'];
+    return asianRecipeMap[ingredient.toLowerCase()] ?? ['${ingredient.capitalize()} Asian Style'];
   }
 
   static Future<String?> _getFallbackFoodImage(String category) async {

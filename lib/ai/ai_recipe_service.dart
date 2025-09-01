@@ -137,96 +137,87 @@ class AIRecipeService {
     String? dietaryRestrictions,
     String? cuisinePreference,
     int maxRecipes,
-    int randomSeed, // Add random seed parameter
+    int randomSeed,
   ) {
     StringBuffer prompt = StringBuffer();
     
-    // Add randomization instruction to ensure variety
-    prompt.writeln('GENERATE COMPLETELY NEW AND DIFFERENT RECIPES! Randomization seed: $randomSeed');
-    prompt.writeln('Generate $maxRecipes DIVERSE and UNIQUE recipe suggestions using DIFFERENT COMBINATIONS of these available ingredients:');
-    prompt.writeln('Available ingredients: ${availableIngredients.join(', ')}');
+    prompt.writeln('GENERATE AUTHENTIC ASIAN CUISINE RECIPES! Randomization seed: $randomSeed');
+    prompt.writeln('Create $maxRecipes DIVERSE Asian recipe suggestions using ONLY ingredients from this available inventory:');
+    prompt.writeln('AVAILABLE INGREDIENTS IN USER\'S FIREBASE DATABASE: ${availableIngredients.join(', ')}');
     
     if (expiringIngredients != null && expiringIngredients.isNotEmpty) {
-      prompt.writeln('Try to prioritize these expiring ingredients: ${expiringIngredients.join(', ')}');
+      prompt.writeln('PRIORITIZE these expiring ingredients: ${expiringIngredients.join(', ')}');
     }
     
     if (dietaryRestrictions != null && dietaryRestrictions.isNotEmpty) {
       prompt.writeln('Dietary restrictions: $dietaryRestrictions');
     }
     
-    if (cuisinePreference != null && cuisinePreference.isNotEmpty) {
-      prompt.writeln('Preferred cuisine: $cuisinePreference');
-    }
-    
-    // Add cooking style variations for more diversity
-    final cookingStyles = ['grilled', 'stir-fried', 'baked', 'steamed', 'roasted', 'sautéed', 'braised'];
-    final mealTypes = ['quick breakfast', 'hearty lunch', 'comfort dinner', 'healthy snack', 'sweet dessert'];
-    final selectedStyle = cookingStyles[randomSeed % cookingStyles.length];
-    final selectedMealType = mealTypes[randomSeed % mealTypes.length];
-    
-    prompt.writeln('Focus on creating ${selectedStyle} dishes and include at least one ${selectedMealType} option.');
-    
     prompt.writeln('''
-CRITICAL REQUIREMENTS FOR VARIETY:
-- Generate COMPLETELY DIFFERENT recipes than any previous suggestions
-- Each recipe must use DIFFERENT ingredient combinations (never repeat the same combinations)
-- Vary cooking methods: $selectedStyle, pan-fried, boiled, raw/fresh, etc.
-- Include diverse meal types: ${mealTypes.join(', ')}
-- Be creative with flavors: Asian, Mediterranean, Mexican, Indian, American, etc.
-- Use different quantities and measurements for the same ingredients
-- Create unique recipe names that haven't been used before
+🍜 ASIAN CUISINE FOCUS REQUIREMENTS:
+- Create recipes inspired by Chinese, Japanese, Thai, Korean, Vietnamese, Malaysian, and Indonesian cuisines
+- Use traditional Asian cooking techniques: stir-frying, steaming, braising, deep-frying, grilling
+- Focus on authentic Asian flavor profiles: soy sauce, ginger, garlic, sesame, rice vinegar, miso, etc.
+- Create dishes like: fried rice, noodle dishes, curry, soup, stir-fry, dumplings, etc.
 
-RECIPE STRUCTURE GUIDELINES:
-- Recipe 1: Use ingredients A, B, C with cooking method 1
-- Recipe 2: Use ingredients D, E, F with cooking method 2  
-- Recipe 3: Use ingredients A, G, H with cooking method 3
-- Recipe 4: Use ingredients I, J, K with cooking method 4
-- Recipe 5: Use ingredients B, L, M with cooking method 5
+🧑‍🍳 INGREDIENT COMBINATION LOGIC:
+- NEVER combine incompatible ingredients (e.g., cereal + chicken, dessert items + meat)
+- Follow these logical Asian ingredient pairings:
 
-Include common pantry items (salt, pepper, oil, spices, herbs) that enhance each specific dish.
-Make recipes practical but INNOVATIVE and DIFFERENT each time.
+PROTEIN COMBINATIONS:
+- Chicken: pairs with rice, vegetables, noodles, egg, ginger, soy sauce
+- Beef: pairs with broccoli, onions, rice, noodles, garlic, oyster sauce
+- Pork: pairs with bok choy, rice, noodles, sweet and sour flavors
+- Fish: pairs with ginger, soy sauce, vegetables, rice, steaming techniques
+- Egg: pairs with rice, vegetables, noodles, tomato, scallions
+- Tofu: pairs with vegetables, soy sauce, miso, mushrooms, rice
 
-INGREDIENT INNOVATION:
-- Same ingredient, different uses: chicken can be grilled, in soup, in salad, in curry, etc.
-- Creative combinations: mix sweet and savory, different cuisines
-- Vary portion sizes and cooking times
-- Add different spices and seasonings for each recipe
+CARBOHYDRATE BASES:
+- Rice: perfect for fried rice, rice bowls, congee, sushi
+- Noodles: ideal for stir-fries, soups, pad thai, ramen
+- Bread: use for Asian-style sandwiches, steamed buns, toast
 
-Please format the response as valid JSON with this exact structure:
-{
-  "recipes": [
-    {
-      "name": "Creative Unique Recipe Name",
-      "timeRequired": "X mins",
-      "difficulty": "Easy/Medium/Hard",
-      "category": "Breakfast/Lunch/Dinner/Snack/Dessert",
-      "description": "Detailed description highlighting what makes this recipe special",
-      "ingredients": [
-        {"name": "ingredient1", "quantity": "varied_amount", "unit": "appropriate_unit", "available": true},
-        {"name": "ingredient2", "quantity": "different_amount", "unit": "different_unit", "available": true},
-        {"name": "seasoning/spice", "quantity": "1", "unit": "tsp", "available": false}
-      ],
-      "instructions": [
-        "Step 1: Detailed unique instruction",
-        "Step 2: Another creative instruction",
-        "Step 3: Final preparation step"
-      ],
-      "nutritionInfo": {
-        "calories": "realistic_number",
-        "servings": "appropriate_servings"
-      }
-    }
-  ]
-}
+VEGETABLE COMBINATIONS:
+- Asian greens (bok choy, cabbage, spinach) with garlic, ginger
+- Root vegetables (carrot, potato) for curries, stews
+- Tomatoes with egg, beef, or in sweet and sour dishes
+- Onions as base for most Asian stir-fries and curries
 
-ABSOLUTELY CRITICAL: 
-- Every recipe must be COMPLETELY DIFFERENT from previous generations
-- Use VARIED cooking techniques and flavor profiles
-- Create UNIQUE ingredient combinations
-- Generate DIVERSE quantities and measurements
-- Never repeat recipe names or cooking methods
-- Be CREATIVE and INNOVATIVE with available ingredients
-- Return valid JSON only, no additional text''');
+🍽️ RECIPE CATEGORIES AND AUTHENTIC NAMES:
+- Chinese: "Yangzhou Fried Rice", "Mapo Tofu", "Sweet and Sour Pork"
+- Japanese: "Chicken Teriyaki", "Miso Soup", "Gyudon Beef Bowl"
+- Thai: "Pad Thai", "Green Curry", "Tom Yum Soup"
+- Korean: "Kimchi Fried Rice", "Bulgogi", "Bibimbap"
+- Vietnamese: "Pho", "Banh Mi", "Vietnamese Spring Rolls"
+- Malaysian: "Nasi Lemak", "Char Kway Teow", "Rendang"
+- Indonesian: "Nasi Goreng", "Gado-Gado", "Ayam Bakar"
+
+🥢 ASIAN PANTRY INGREDIENTS TO ADD:
+- Soy sauce (light/dark), oyster sauce, fish sauce
+- Sesame oil, rice wine, rice vinegar
+- Ginger, garlic, lemongrass, chili
+- Miso paste, hoisin sauce, sriracha
+- Coconut milk, tamarind paste
+- Five-spice powder, star anise, white pepper
+
+EXAMPLE OF PROPER ASIAN COMBINATIONS:
+If available ingredients are: ["chicken", "rice", "egg", "onion", "carrot"]
+
+Recipe 1: "Chinese Chicken Fried Rice" - chicken + rice + egg + soy sauce + sesame oil
+Recipe 2: "Japanese Chicken Oyakodon" - chicken + egg + onion + rice + mirin
+Recipe 3: "Thai Basil Chicken" - chicken + onion + carrot + fish sauce + thai basil
+Recipe 4: "Korean Chicken Rice Bowl" - chicken + rice + carrot + gochujang + sesame
+Recipe 5: "Vietnamese Chicken Curry" - chicken + carrot + onion + coconut milk + curry
+
+🚨 CRITICAL ASIAN RECIPE RULES:
+- NEVER mix breakfast cereals with savory Asian dishes
+- NEVER combine dairy (milk/cheese) with traditional Asian recipes (except fusion dishes)
+- NEVER create nonsensical combinations like "cereal chicken curry"
+- Each recipe must be culturally authentic and make culinary sense
+- Use proper Asian cooking terminology and techniques
+- Focus on umami flavors and balance (sweet, sour, salty, spicy, bitter)
+
+Please format the response as valid JSON with authentic Asian recipe names and proper ingredient combinations.''');
     
     return prompt.toString();
   }
@@ -291,365 +282,194 @@ ABSOLUTELY CRITICAL:
   }
 
   static Future<List<Map<String, dynamic>>> _getFallbackRecipes(List<String> ingredients, {int? randomSeed}) async {
-    print('Creating fallback recipes with ingredients: $ingredients');
+    print('Creating Asian-style fallback recipes with Firebase ingredients: $ingredients');
     
-    // Use random seed to create variety in fallback recipes
     final seed = randomSeed ?? DateTime.now().millisecondsSinceEpoch;
     final random = seed % 100;
     
     List<Map<String, dynamic>> fallbackRecipes = [];
     
     if (ingredients.isNotEmpty) {
-      // Shuffle ingredients for variety
-      final shuffledIngredients = List<String>.from(ingredients);
-      if (random > 50) {
-        shuffledIngredients.shuffle();
-      }
+      // Create sensible Asian ingredient combinations
+      final asianCombinations = _createAsianIngredientCombinations(ingredients);
       
-      // Create diverse recipes using different ingredient combinations
-      Set<String> usedMainIngredients = {};
+      Set<String> usedCombinations = {};
       
-      // Generate different recipe combinations based on random seed
-      for (int i = 0; i < ingredients.length && fallbackRecipes.length < 5; i++) {
-        final currentIndex = (i + (random % ingredients.length)) % ingredients.length;
-        final mainIngredient = shuffledIngredients[currentIndex];
-        
-        if (!usedMainIngredients.contains(mainIngredient)) {
-          // Create different supporting ingredient combinations
-          final supportingIngredients = shuffledIngredients
-              .where((ing) => ing != mainIngredient)
-              .take(2)
-              .toList();
+      for (int i = 0; i < 5 && fallbackRecipes.length < 5; i++) {
+        if (i < asianCombinations.length) {
+          final combination = asianCombinations[i];
+          String combinationKey = combination.join('-');
           
-          final recipe = await _createFallbackRecipe(
-            mainIngredient, 
-            supportingIngredients, 
-            'fallback_${seed}_${i}', // Include seed in ID for uniqueness
-            random, // Pass random for recipe variation
-          );
-          fallbackRecipes.add(recipe);
-          usedMainIngredients.add(mainIngredient);
+          if (!usedCombinations.contains(combinationKey)) {
+            final recipe = await _createAsianStyleRecipe(
+              combination,
+              'asian_fallback_${seed}_${i}',
+              random + i,
+            );
+            fallbackRecipes.add(recipe);
+            usedCombinations.add(combinationKey);
+          }
         }
       }
-      
-      // If we have fewer recipes, create combination recipes
-      while (fallbackRecipes.length < 3 && ingredients.length >= 2) {
-        final remainingIngredients = shuffledIngredients.where(
-          (ing) => !usedMainIngredients.contains(ing)
-        ).take(3).toList();
-        
-        if (remainingIngredients.length >= 2) {
-          final comboRecipe = await _createCombinationRecipe(
-            remainingIngredients, 
-            'fallback_combo_${seed}_${fallbackRecipes.length}',
-            random, // Pass random for variation
-          );
-          fallbackRecipes.add(comboRecipe);
-          usedMainIngredients.addAll(remainingIngredients.take(2));
-        } else {
-          break;
-        }
-      }
-      
     } else {
-      // Default fallback when no ingredients available - randomize these too
-      final defaultRecipes = await _getDefaultFallbackRecipes(random);
+      final defaultRecipes = await _getAsianDefaultRecipes(random);
       fallbackRecipes.addAll(defaultRecipes);
     }
 
-    print('Created ${fallbackRecipes.length} randomized fallback recipes');
     return fallbackRecipes;
   }
-  
-  static Future<Map<String, dynamic>> _createFallbackRecipe(
-    String mainIngredient, 
-    List<String> supportingIngredients, 
-    String id,
-    int randomVariation, // Add random parameter
-  ) async {
-    // Add cooking style variations based on random number
-    final cookingStyles = ['Simple', 'Crispy', 'Tender', 'Spicy', 'Herbed', 'Garlic', 'Honey', 'Lemon'];
-    final cookingMethods = ['Pan-fried', 'Oven-baked', 'Steamed', 'Grilled', 'Sautéed'];
+
+  static List<List<String>> _createAsianIngredientCombinations(List<String> ingredients) {
+    List<List<String>> combinations = [];
     
-    final styleIndex = randomVariation % cookingStyles.length;
-    final methodIndex = randomVariation % cookingMethods.length;
+    // Group ingredients by type for better combinations
+    List<String> proteins = [];
+    List<String> carbs = [];
+    List<String> vegetables = [];
+    List<String> others = [];
     
-    // Determine recipe type based on ingredient
-    String category = 'Dinner';
-    String recipeName = '${cookingStyles[styleIndex]} ${StringExtension(mainIngredient).capitalize()} ${cookingMethods[methodIndex]}';
-    List<String> instructions = [];
-    List<Map<String, dynamic>> ingredientsList = [];
+    for (String ingredient in ingredients) {
+      final lower = ingredient.toLowerCase();
+      if (_isProtein(lower)) {
+        proteins.add(ingredient);
+      } else if (_isCarbohydrate(lower)) {
+        carbs.add(ingredient);
+      } else if (_isVegetable(lower)) {
+        vegetables.add(ingredient);
+      } else {
+        others.add(ingredient);
+      }
+    }
     
-    // Add randomized quantities for variety
-    final quantities = ['1', '2', '1.5', '0.5', '1/2', '1/4', '3/4'];
-    final getRandomQuantity = () => quantities[randomVariation % quantities.length];
-    
-    // Customize based on ingredient type with variations
-    if (mainIngredient.toLowerCase().contains('egg')) {
-      category = 'Breakfast';
-      final eggStyles = ['Scrambled', 'Fluffy', 'Creamy', 'Herb', 'Cheese'];
-      recipeName = '${eggStyles[randomVariation % eggStyles.length]} ${StringExtension(mainIngredient).capitalize()}';
-      
-      final spices = ['paprika', 'chives', 'oregano', 'thyme', 'parsley'];
-      final selectedSpice = spices[randomVariation % spices.length];
-      
-      ingredientsList = [
-        {'name': 'eggs', 'quantity': randomVariation % 2 == 0 ? '3' : '2', 'unit': 'pieces', 'available': true},
-        {'name': 'butter', 'quantity': getRandomQuantity(), 'unit': 'tbsp', 'available': false},
-        {'name': 'salt', 'quantity': '1', 'unit': 'pinch', 'available': false},
-        {'name': selectedSpice, 'quantity': '1/2', 'unit': 'tsp', 'available': false},
-      ];
-      
-      instructions = [
-        randomVariation % 2 == 0 
-          ? 'Heat butter in a non-stick pan over low heat'
-          : 'Melt butter in a heavy-bottomed pan over medium-low heat',
-        'Beat eggs with salt and $selectedSpice in a bowl until well combined',
-        randomVariation % 3 == 0 
-          ? 'Pour eggs into pan and let sit for 30 seconds before stirring'
-          : 'Pour beaten eggs into the pan and immediately start stirring',
-        'Gently fold eggs with spatula until just set but still creamy',
-        'Serve immediately while hot and fluffy'
-      ];
-    } else if (mainIngredient.toLowerCase().contains('cereal') || 
-               mainIngredient.toLowerCase().contains('oat')) {
-      category = 'Breakfast';
-      final bowlStyles = ['Classic', 'Tropical', 'Berry', 'Nutty', 'Protein'];
-      recipeName = '${bowlStyles[randomVariation % bowlStyles.length]} ${StringExtension(mainIngredient).capitalize()} Bowl';
-      
-      final toppings = ['sliced almonds', 'fresh berries', 'chia seeds', 'coconut flakes', 'chopped walnuts'];
-      final selectedTopping = toppings[randomVariation % toppings.length];
-      
-      ingredientsList = [
-        {'name': mainIngredient, 'quantity': randomVariation % 2 == 0 ? '3/4' : '1', 'unit': 'cup', 'available': true},
-        {'name': randomVariation % 2 == 0 ? 'cold milk' : 'oat milk', 'quantity': getRandomQuantity(), 'unit': 'cup', 'available': false},
-        {'name': randomVariation % 3 == 0 ? 'maple syrup' : 'honey', 'quantity': '1', 'unit': 'tsp', 'available': false},
-        {'name': selectedTopping, 'quantity': '2', 'unit': 'tbsp', 'available': false},
-      ];
-      
-      instructions = [
-        'Pour cereal into your favorite bowl',
-        randomVariation % 2 == 0 
-          ? 'Add milk gradually until cereal is just covered'
-          : 'Pour in milk to your preferred level for desired crunchiness',
-        'Drizzle with sweetener and mix gently',
-        'Top with $selectedTopping for extra nutrition and flavor',
-        'Enjoy immediately for best texture'
-      ];
-    } else if (mainIngredient.toLowerCase().contains('chicken')) {
-      category = 'Dinner';
-      final chickenStyles = ['Mediterranean', 'Asian-style', 'BBQ', 'Lemon Herb', 'Cajun'];
-      recipeName = '${chickenStyles[randomVariation % chickenStyles.length]} ${StringExtension(mainIngredient).capitalize()}';
-      
-      final seasonings = ['rosemary', 'thyme', 'oregano', 'paprika', 'garlic powder'];
-      final selectedSeasoning = seasonings[randomVariation % seasonings.length];
-      
-      ingredientsList = [
-        {'name': 'chicken breast', 'quantity': randomVariation % 2 == 0 ? '2' : '1', 'unit': 'piece', 'available': true},
-        {'name': randomVariation % 2 == 0 ? 'olive oil' : 'avocado oil', 'quantity': getRandomQuantity(), 'unit': 'tbsp', 'available': false},
-        {'name': 'salt', 'quantity': '1', 'unit': 'tsp', 'available': false},
-        {'name': 'black pepper', 'quantity': '1/2', 'unit': 'tsp', 'available': false},
-        {'name': selectedSeasoning, 'quantity': randomVariation % 2 == 0 ? '1' : '1/2', 'unit': 'tsp', 'available': false},
-      ];
-      
-      instructions = [
-        'Pat chicken dry and season generously with salt, pepper, and $selectedSeasoning',
-        randomVariation % 2 == 0 
-          ? 'Let chicken marinate at room temperature for 15 minutes'
-          : 'Allow seasoning to penetrate for 10 minutes',
-        'Heat oil in a skillet over medium-high heat until shimmering',
-        randomVariation % 3 == 0 
-          ? 'Sear chicken for 7-8 minutes per side until golden and cooked through'
-          : 'Cook chicken 6-7 minutes per side until internal temperature reaches 165°F',
-        'Rest chicken for 5 minutes before slicing and serving'
-      ];
-    } else if (mainIngredient.toLowerCase().contains('rice')) {
-      category = 'Dinner';
-      final riceStyles = ['Coconut', 'Herb', 'Spiced', 'Garlic', 'Simple'];
-      recipeName = '${riceStyles[randomVariation % riceStyles.length]} ${StringExtension(mainIngredient).capitalize()}';
-      
-      ingredientsList = [
-        {'name': 'rice', 'quantity': '1', 'unit': 'cup', 'available': true},
-        {'name': 'water', 'quantity': '2', 'unit': 'cups', 'available': false},
-        {'name': 'salt', 'quantity': '1/2', 'unit': 'tsp', 'available': false},
-        {'name': 'butter', 'quantity': '1', 'unit': 'tbsp', 'available': false},
-      ];
-      
-      instructions = [
-        'Rinse rice in cold water until water runs clear',
-        'In a pot, combine rice, water, and salt',
-        'Bring to a boil over high heat',
-        'Reduce heat to low, cover, and simmer for 18-20 minutes',
-        'Remove from heat, add butter, and let stand 5 minutes before fluffing with fork'
-      ];
-    } else if (mainIngredient.toLowerCase().contains('pasta') || 
-               mainIngredient.toLowerCase().contains('noodle')) {
-      category = 'Dinner';
-      final pastaStyles = ['Garlic', 'Herb', 'Simple', 'Creamy', 'Spicy'];
-      recipeName = '${pastaStyles[randomVariation % pastaStyles.length]} ${StringExtension(mainIngredient).capitalize()}';
-      
-      ingredientsList = [
-        {'name': mainIngredient, 'quantity': '200', 'unit': 'grams', 'available': true},
-        {'name': 'water', 'quantity': '4', 'unit': 'cups', 'available': false},
-        {'name': 'salt', 'quantity': '1', 'unit': 'tsp', 'available': false},
-        {'name': 'olive oil', 'quantity': '2', 'unit': 'tbsp', 'available': false},
-        {'name': 'parmesan cheese', 'quantity': '1/4', 'unit': 'cup', 'available': false},
-      ];
-      
-      instructions = [
-        'Bring salted water to a boil in a large pot',
-        'Add pasta and cook according to package directions',
-        'Reserve 1/2 cup pasta water before draining',
-        'Toss hot pasta with olive oil and pasta water',
-        'Top with grated parmesan cheese and serve'
-      ];
-    } else if (mainIngredient.toLowerCase().contains('bread')) {
-      category = 'Breakfast';
-      final breadStyles = ['Buttered', 'Cinnamon', 'Garlic', 'Herb', 'Sweet'];
-      recipeName = '${breadStyles[randomVariation % breadStyles.length]} ${StringExtension(mainIngredient).capitalize()}';
-      
-      ingredientsList = [
-        {'name': 'bread', 'quantity': '2', 'unit': 'slices', 'available': true},
-        {'name': 'butter', 'quantity': '2', 'unit': 'tbsp', 'available': false},
-        {'name': 'jam', 'quantity': '1', 'unit': 'tbsp', 'available': false},
-      ];
-      
-      instructions = [
-        'Toast bread slices until golden brown',
-        'Spread butter evenly on warm toast',
-        'Add jam or honey if desired',
-        'Serve immediately while warm'
-      ];
-    } else {
-      // Generic recipe for unknown ingredients
-      recipeName = '${cookingStyles[styleIndex]} ${StringExtension(mainIngredient).capitalize()} ${cookingMethods[methodIndex]}';
-      ingredientsList = [
-        {'name': mainIngredient, 'quantity': getRandomQuantity(), 'unit': 'portion', 'available': true},
-        {'name': 'salt', 'quantity': '1', 'unit': 'pinch', 'available': false},
-        {'name': 'cooking oil', 'quantity': getRandomQuantity(), 'unit': 'tbsp', 'available': false},
-        {'name': 'black pepper', 'quantity': '1/4', 'unit': 'tsp', 'available': false},
-      ];
-      
-      instructions = [
-        'Prepare ${mainIngredient} by washing and cutting as needed',
-        randomVariation % 2 == 0 
-          ? 'Heat oil in a pan over medium heat until warm'
-          : 'Heat oil in a large skillet over medium-high heat',
-        'Add ${mainIngredient} and cook for ${5 + (randomVariation % 4)} minutes until tender',
-        'Season with salt and pepper to taste',
-        'Serve hot and enjoy this delicious dish'
-      ];
-      
-      // Add supporting ingredients with variation
-      for (String supporting in supportingIngredients.take(2)) {
-        if (supporting != mainIngredient) {
-          ingredientsList.insert(-2, {
-            'name': supporting, 
-            'quantity': getRandomQuantity(), 
-            'unit': 'portion', 
-            'available': true
-          });
-          instructions.insert(-2, 'Add ${supporting} and cook for ${2 + (randomVariation % 3)} more minutes');
+    // Create logical Asian combinations
+    // Protein + Carb combinations
+    for (String protein in proteins) {
+      for (String carb in carbs) {
+        combinations.add([protein, carb]);
+        // Add vegetable if available
+        if (vegetables.isNotEmpty) {
+          combinations.add([protein, carb, vegetables.first]);
         }
       }
     }
     
-    final recipe = {
-      'id': id,
-      'name': recipeName,
-      'timeRequired': '${10 + (randomVariation % 20)} mins', // Randomize time
-      'difficulty': ['Easy', 'Medium'][randomVariation % 2], // Randomize difficulty
-      'category': category,
-      'description': 'Delicious ${cookingStyles[styleIndex].toLowerCase()} recipe with a unique twist using available ingredients',
-      'ingredients': ingredientsList,
-      'instructions': instructions,
-      'nutritionInfo': {
-        'calories': '${150 + (randomVariation % 200)}', // Randomize calories
-        'servings': '${1 + (randomVariation % 3)}'  // Randomize servings
-      },
-      'isAIGenerated': false,
-    };
+    // Vegetarian combinations
+    if (carbs.isNotEmpty && vegetables.isNotEmpty) {
+      combinations.add([carbs.first, vegetables.first]);
+      if (others.isNotEmpty && _isEgg(others.first.toLowerCase())) {
+        combinations.add([carbs.first, vegetables.first, others.first]);
+      }
+    }
     
-    final imageUrl = await RecipeImageService.getRecipeImage(
-      recipe['name'] as String,
-      recipe['category'] as String,
-    );
-    recipe['imageUrl'] = imageUrl ?? 'assets/images/food_placeholder.png';
+    // Protein + vegetable combinations (without carbs)
+    for (String protein in proteins) {
+      if (vegetables.isNotEmpty) {
+        combinations.add([protein, vegetables.first]);
+      }
+    }
     
-    return recipe;
+    // If no good combinations, just pair ingredients sensibly
+    if (combinations.isEmpty && ingredients.length >= 2) {
+      for (int i = 0; i < ingredients.length - 1; i++) {
+        if (_areCompatibleIngredients(ingredients[i], ingredients[i + 1])) {
+          combinations.add([ingredients[i], ingredients[i + 1]]);
+        }
+      }
+    }
+    
+    return combinations.take(5).toList();
+  }
+
+  static bool _isProtein(String ingredient) {
+    return ['chicken', 'beef', 'pork', 'fish', 'tofu', 'shrimp', 'duck'].any((p) => ingredient.contains(p));
   }
   
-  static Future<Map<String, dynamic>> _createCombinationRecipe(
-    List<String> ingredients, 
+  static bool _isCarbohydrate(String ingredient) {
+    return ['rice', 'noodle', 'pasta', 'bread', 'potato', 'sweet potato'].any((c) => ingredient.contains(c));
+  }
+  
+  static bool _isVegetable(String ingredient) {
+    return ['carrot', 'onion', 'garlic', 'ginger', 'cabbage', 'bok choy', 'broccoli', 
+            'spinach', 'tomato', 'bell pepper', 'mushroom', 'bean sprout'].any((v) => ingredient.contains(v));
+  }
+  
+  static bool _isEgg(String ingredient) {
+    return ingredient.contains('egg');
+  }
+  
+  static bool _areCompatibleIngredients(String ing1, String ing2) {
+    final lower1 = ing1.toLowerCase();
+    final lower2 = ing2.toLowerCase();
+    
+    // Avoid nonsensical combinations
+    if ((lower1.contains('cereal') || lower1.contains('milk')) && (_isProtein(lower2))) return false;
+    if ((lower2.contains('cereal') || lower2.contains('milk')) && (_isProtein(lower1))) return false;
+    
+    return true;
+  }
+
+  static Future<Map<String, dynamic>> _createAsianStyleRecipe(
+    List<String> firebaseIngredients,
     String id,
-    int randomVariation, // Add random parameter
+    int randomVariation,
   ) async {
-    final cookingStyles = ['Fusion', 'Mediterranean', 'Asian-inspired', 'Rustic', 'Gourmet'];
-    final dishTypes = ['Stir-fry', 'Bowl', 'Skillet', 'Medley', 'Combo'];
+    // Asian cuisine styles and techniques
+    final asianCuisines = [
+      'Chinese', 'Japanese', 'Thai', 'Korean', 'Vietnamese', 
+      'Malaysian', 'Indonesian', 'Singaporean'
+    ];
     
-    final style = cookingStyles[randomVariation % cookingStyles.length];
-    final dish = dishTypes[randomVariation % dishTypes.length];
-    final recipeName = '$style ${ingredients.map((e) => StringExtension(e).capitalize()).take(2).join(" & ")} $dish';
+    final asianTechniques = [
+      'Stir-Fried', 'Steamed', 'Braised', 'Teriyaki', 'Szechuan',
+      'Pad Thai Style', 'Korean BBQ', 'Vietnamese Style', 'Thai Curry'
+    ];
     
-    // Randomize quantities and cooking methods
-    final quantities = ['1', '1.5', '2', '0.5', '3/4'];
-    final getRandomQuantity = () => quantities[randomVariation % quantities.length];
+    // Generate authentic Asian recipe name
+    final cuisine = asianCuisines[randomVariation % asianCuisines.length];
+    final technique = asianTechniques[randomVariation % asianTechniques.length];
     
+    String recipeName = _generateAsianRecipeName(firebaseIngredients, cuisine, technique, randomVariation);
+    
+    // Determine category based on ingredients and Asian meal types
+    String category = _determineAsianRecipeCategory(firebaseIngredients, randomVariation);
+    
+    // Create authentic Asian description
+    String description = _generateAsianRecipeDescription(firebaseIngredients, cuisine, technique);
+    
+    // Create ingredient list with Asian pantry items
     List<Map<String, dynamic>> ingredientsList = [];
     
-    for (int i = 0; i < ingredients.length; i++) {
+    // Add Firebase ingredients as available
+    for (String ingredient in firebaseIngredients) {
+      final quantity = _getRealisticQuantity(ingredient, randomVariation);
+      final unit = _getRealisticUnit(ingredient);
+      
       ingredientsList.add({
-        'name': ingredients[i], 
-        'quantity': getRandomQuantity(), 
-        'unit': _getUnitForIngredient(ingredients[i]), 
-        'available': true
+        'name': ingredient,
+        'quantity': quantity,
+        'unit': unit,
+        'available': true,
       });
     }
     
-    // Add varied seasonings
-    final seasonings = [
-      ['garlic powder', 'onion powder'], 
-      ['paprika', 'cumin'], 
-      ['italian herbs', 'red pepper flakes'],
-      ['ginger powder', 'soy sauce'],
-      ['lemon zest', 'black pepper']
-    ];
-    final selectedSeasonings = seasonings[randomVariation % seasonings.length];
+    // Add Asian-specific pantry ingredients
+    final asianPantryItems = _generateAsianPantryItems(firebaseIngredients, technique, randomVariation);
+    ingredientsList.addAll(asianPantryItems);
     
-    ingredientsList.addAll([
-      {'name': 'salt', 'quantity': '1', 'unit': 'pinch', 'available': false},
-      {'name': 'cooking oil', 'quantity': getRandomQuantity(), 'unit': 'tbsp', 'available': false},
-      {'name': selectedSeasonings[0], 'quantity': '1/2', 'unit': 'tsp', 'available': false},
-      {'name': selectedSeasonings[1], 'quantity': '1/4', 'unit': 'tsp', 'available': false},
-    ]);
+    // Generate Asian cooking instructions
+    final instructions = _generateAsianCookingInstructions(firebaseIngredients, technique, recipeName);
     
     final recipe = {
       'id': id,
       'name': recipeName,
-      'timeRequired': '${15 + (randomVariation % 15)} mins',
-      'difficulty': ['Medium', 'Easy', 'Hard'][randomVariation % 3],
-      'category': 'Dinner',
-      'description': '$style combination featuring ${ingredients.join(", ")} with aromatic ${selectedSeasonings.join(" and ")}',
+      'timeRequired': '${15 + (randomVariation % 25)} mins',
+      'difficulty': ['Easy', 'Medium', 'Hard'][randomVariation % 3],
+      'category': category,
+      'description': description,
       'ingredients': ingredientsList,
-      'instructions': [
-        'Heat cooking oil in a large pan over medium heat',
-        randomVariation % 2 == 0 
-          ? 'Add ${ingredients[0]} first and cook for ${3 + (randomVariation % 3)} minutes'
-          : 'Start by cooking ${ingredients[0]} until it begins to ${randomVariation % 2 == 0 ? "brown" : "soften"}',
-        for (int i = 1; i < ingredients.length; i++)
-          'Add ${ingredients[i]} and cook for ${2 + (randomVariation % 2)} minutes',
-        'Season with salt, ${selectedSeasonings[0]}, and ${selectedSeasonings[1]}',
-        randomVariation % 3 == 0 
-          ? 'Stir everything together and cook for ${3 + (randomVariation % 4)} more minutes'
-          : 'Mix well and let flavors meld for ${2 + (randomVariation % 3)} minutes',
-        'Taste and adjust seasoning if needed',
-        'Serve hot as a complete meal'
-      ],
-      'nutritionInfo': {
-        'calories': '${250 + (randomVariation % 150)}', 
-        'servings': '${2 + (randomVariation % 2)}'
-      },
-      'isAIGenerated': false,
+      'instructions': instructions,
+      'nutritionInfo': _calculateNutritionInfo(firebaseIngredients, randomVariation),
+      'isAIGenerated': true,
     };
     
     final imageUrl = await RecipeImageService.getRecipeImage(
@@ -660,127 +480,274 @@ ABSOLUTELY CRITICAL:
     
     return recipe;
   }
-  
-  // Helper method to get appropriate unit for ingredient
-  static String _getUnitForIngredient(String ingredient) {
-    final lowerIngredient = ingredient.toLowerCase();
+
+  static String _generateAsianRecipeName(List<String> ingredients, String cuisine, String technique, int variation) {
+    final mainIngredient = StringExtension(ingredients[0]).capitalize();
     
-    if (lowerIngredient.contains('egg')) return 'pieces';
-    if (lowerIngredient.contains('chicken')) return 'piece';
-    if (lowerIngredient.contains('rice')) return 'cup';
-    if (lowerIngredient.contains('pasta') || lowerIngredient.contains('noodle')) return 'grams';
-    if (lowerIngredient.contains('bread')) return 'slices';
-    if (lowerIngredient.contains('cereal')) return 'cup';
-    if (lowerIngredient.contains('milk')) return 'cup';
-    if (lowerIngredient.contains('oil')) return 'tbsp';
+    // Authentic Asian dish names based on cuisine
+    if (cuisine == 'Chinese') {
+      final chineseDishes = ['Fried Rice', 'Sweet and Sour', 'Kung Pao', 'Mapo', 'Hong Shao'];
+      final dish = chineseDishes[variation % chineseDishes.length];
+      return '$dish $mainIngredient';
+    } else if (cuisine == 'Japanese') {
+      final japaneseDishes = ['Teriyaki', 'Katsu', 'Donburi', 'Yakitori', 'Tempura'];
+      final dish = japaneseDishes[variation % japaneseDishes.length];
+      return '$mainIngredient $dish';
+    } else if (cuisine == 'Thai') {
+      final thaiDishes = ['Pad Thai', 'Green Curry', 'Basil Stir Fry', 'Tom Yum', 'Massaman'];
+      final dish = thaiDishes[variation % thaiDishes.length];
+      return '$dish $mainIngredient';
+    } else if (cuisine == 'Korean') {
+      final koreanDishes = ['Bulgogi', 'Kimchi', 'Bibimbap', 'Korean BBQ', 'Japchae'];
+      final dish = koreanDishes[variation % koreanDishes.length];
+      return '$dish Style $mainIngredient';
+    } else if (cuisine == 'Vietnamese') {
+      final vietnameseDishes = ['Pho', 'Banh Mi', 'Com Tam', 'Bun Bo', 'Canh Chua'];
+      final dish = vietnameseDishes[variation % vietnameseDishes.length];
+      return '$mainIngredient $dish';
+    }
     
-    return 'portion'; // Default unit
+    // Default format
+    return '$cuisine $technique $mainIngredient';
   }
 
-  // Default fallback recipes when no ingredients are available
-  static Future<List<Map<String, dynamic>>> _getDefaultFallbackRecipes(int randomVariation) async {
-    final recipeVariations = [
-      // Variation set 1
-      [
-        {
-          'id': 'default_var1_1',
-          'name': 'Fluffy Herb Omelet',
-          'timeRequired': '12 mins',
-          'difficulty': 'Easy',
-          'category': 'Breakfast',
-          'description': 'A light and fluffy omelet with fresh herbs',
-          'ingredients': [
-            {'name': 'eggs', 'quantity': '3', 'unit': 'pieces', 'available': false},
-            {'name': 'butter', 'quantity': '2', 'unit': 'tbsp', 'available': false},
-            {'name': 'salt', 'quantity': '1', 'unit': 'pinch', 'available': false},
-            {'name': 'fresh chives', 'quantity': '1', 'unit': 'tbsp', 'available': false},
-          ],
-          'instructions': [
-            'Beat eggs with salt until frothy',
-            'Heat butter in pan over medium-low heat',
-            'Pour eggs and let set, then fold',
-            'Garnish with chives and serve'
-          ],
-          'nutritionInfo': {'calories': '180', 'servings': '1'},
-          'isAIGenerated': false,
-        },
-        {
-          'id': 'default_var1_2',
-          'name': 'Coconut Rice Bowl',
-          'timeRequired': '25 mins',
-          'difficulty': 'Easy',
-          'category': 'Lunch',
-          'description': 'Fragrant coconut-infused rice bowl',
-          'ingredients': [
-            {'name': 'rice', 'quantity': '1', 'unit': 'cup', 'available': false},
-            {'name': 'coconut milk', 'quantity': '1', 'unit': 'cup', 'available': false},
-            {'name': 'water', 'quantity': '1', 'unit': 'cup', 'available': false},
-            {'name': 'salt', 'quantity': '1/2', 'unit': 'tsp', 'available': false},
-          ],
-          'instructions': [
-            'Combine rice, coconut milk, water and salt',
-            'Bring to boil then simmer covered',
-            'Cook until liquid absorbed',
-            'Fluff and serve warm'
-          ],
-          'nutritionInfo': {'calories': '220', 'servings': '2'},
-          'isAIGenerated': false,
-        },
-      ],
-      // Variation set 2
-      [
-        {
-          'id': 'default_var2_1',
-          'name': 'Spiced Scrambled Eggs',
-          'timeRequired': '8 mins',
-          'difficulty': 'Easy',
-          'category': 'Breakfast',
-          'description': 'Creamy scrambled eggs with aromatic spices',
-          'ingredients': [
-            {'name': 'eggs', 'quantity': '2', 'unit': 'pieces', 'available': false},
-            {'name': 'milk', 'quantity': '2', 'unit': 'tbsp', 'available': false},
-            {'name': 'turmeric', 'quantity': '1/4', 'unit': 'tsp', 'available': false},
-            {'name': 'cumin', 'quantity': '1/4', 'unit': 'tsp', 'available': false},
-          ],
-          'instructions': [
-            'Whisk eggs with milk and spices',
-            'Cook in pan over low heat, stirring constantly',
-            'Remove when just set but creamy',
-            'Serve immediately'
-          ],
-          'nutritionInfo': {'calories': '160', 'servings': '1'},
-          'isAIGenerated': false,
-        },
-        {
-          'id': 'default_var2_2',
-          'name': 'Garlic Herb Pasta',
-          'timeRequired': '18 mins',
-          'difficulty': 'Medium',
-          'category': 'Dinner',
-          'description': 'Simple pasta with garlic and fresh herbs',
-          'ingredients': [
-            {'name': 'pasta', 'quantity': '250', 'unit': 'grams', 'available': false},
-            {'name': 'garlic', 'quantity': '3', 'unit': 'cloves', 'available': false},
-            {'name': 'olive oil', 'quantity': '3', 'unit': 'tbsp', 'available': false},
-            {'name': 'parsley', 'quantity': '1/4', 'unit': 'cup', 'available': false},
-          ],
-          'instructions': [
-            'Cook pasta according to package directions',
-            'Heat oil and sauté minced garlic',
-            'Toss hot pasta with garlic oil',
-            'Garnish with fresh parsley'
-          ],
-          'nutritionInfo': {'calories': '280', 'servings': '2'},
-          'isAIGenerated': false,
-        },
-      ],
+  static String _generateAsianRecipeDescription(List<String> ingredients, String cuisine, String technique) {
+    final primaryIngredient = StringExtension(ingredients[0]).capitalize();
+    
+    final descriptions = [
+      'An authentic $cuisine dish featuring $technique $primaryIngredient with traditional Asian aromatics and umami-rich seasonings.',
+      'Experience the vibrant flavors of $cuisine cuisine in this $technique $primaryIngredient recipe, perfectly balanced with sweet, sour, and savory notes.',
+      'This $cuisine-inspired $technique $primaryIngredient combines traditional cooking techniques with bold Asian flavors for an unforgettable meal.',
+      'Savor the essence of $cuisine cooking with this expertly crafted $technique $primaryIngredient, infused with aromatic herbs and spices.',
+      'A modern take on classic $cuisine flavors, this $technique $primaryIngredient dish delivers restaurant-quality taste at home.',
     ];
     
-    // Select variation set based on random number
-    final selectedVariationSet = recipeVariations[randomVariation % recipeVariations.length];
+    return descriptions[ingredients.length % descriptions.length];
+  }
+
+  static List<Map<String, dynamic>> _generateAsianPantryItems(List<String> ingredients, String technique, int randomVariation) {
+    List<Map<String, dynamic>> pantryItems = [];
     
-    // Add images to recipes
-    for (var recipe in selectedVariationSet) {
+    // Essential Asian base seasonings
+    pantryItems.addAll([
+      {'name': 'soy sauce', 'quantity': '2', 'unit': 'tbsp', 'available': false},
+      {'name': 'sesame oil', 'quantity': '1', 'unit': 'tsp', 'available': false},
+      {'name': 'garlic', 'quantity': '2', 'unit': 'cloves', 'available': false},
+    ]);
+    
+    // Technique-specific seasonings
+    if (technique.contains('Teriyaki')) {
+      pantryItems.add({'name': 'mirin', 'quantity': '1', 'unit': 'tbsp', 'available': false});
+      pantryItems.add({'name': 'brown sugar', 'quantity': '1', 'unit': 'tsp', 'available': false});
+    } else if (technique.contains('Thai') || technique.contains('Curry')) {
+      pantryItems.add({'name': 'fish sauce', 'quantity': '1', 'unit': 'tbsp', 'available': false});
+      pantryItems.add({'name': 'coconut milk', 'quantity': '1/4', 'unit': 'cup', 'available': false});
+    } else if (technique.contains('Korean')) {
+      pantryItems.add({'name': 'gochujang', 'quantity': '1', 'unit': 'tbsp', 'available': false});
+      pantryItems.add({'name': 'rice vinegar', 'quantity': '1', 'unit': 'tsp', 'available': false});
+    } else if (technique.contains('Chinese') || technique.contains('Stir-Fried')) {
+      pantryItems.add({'name': 'oyster sauce', 'quantity': '1', 'unit': 'tbsp', 'available': false});
+      pantryItems.add({'name': 'cornstarch', 'quantity': '1', 'unit': 'tsp', 'available': false});
+    }
+    
+    // Add ginger for most Asian dishes
+    pantryItems.add({'name': 'fresh ginger', 'quantity': '1', 'unit': 'inch', 'available': false});
+    
+    // Add cooking oil
+    pantryItems.add({'name': 'vegetable oil', 'quantity': '2', 'unit': 'tbsp', 'available': false});
+    
+    return pantryItems.take(6).toList();
+  }
+
+  static List<String> _generateAsianCookingInstructions(List<String> ingredients, String technique, String recipeName) {
+    List<String> instructions = [];
+    
+    // Preparation with Asian focus
+    instructions.add('Prepare ingredients: ${ingredients.join(", ")}. Slice meats thinly, cut vegetables uniformly for even cooking.');
+    
+    // Asian cooking techniques
+    if (technique.contains('Stir-Fried')) {
+      instructions.add('Heat wok or large skillet over high heat until smoking. Add vegetable oil and swirl to coat.');
+      instructions.add('Add garlic and ginger, stir-fry for 30 seconds until fragrant.');
+      instructions.add('Add ${ingredients[0]} and stir-fry for 2-3 minutes until cooked through.');
+    } else if (technique.contains('Teriyaki')) {
+      instructions.add('Mix soy sauce, mirin, and brown sugar in a small bowl to make teriyaki sauce.');
+      instructions.add('Heat oil in a pan over medium-high heat. Cook ${ingredients[0]} until golden brown.');
+    } else if (technique.contains('Thai') || technique.contains('Curry')) {
+      instructions.add('Heat oil in a pan over medium heat. Add garlic and ginger, cook until fragrant.');
+      instructions.add('Add ${ingredients[0]} and cook until almost done.');
+      instructions.add('Pour in coconut milk and fish sauce, bring to a gentle simmer.');
+    } else if (technique.contains('Steamed')) {
+      instructions.add('Set up a steamer basket over boiling water. Arrange ${ingredients[0]} in the steamer.');
+      instructions.add('Steam for 8-12 minutes until cooked through and tender.');
+    }
+    
+    // Add remaining ingredients
+    if (ingredients.length > 1) {
+      instructions.add('Add ${ingredients.sublist(1).join(" and ")} to the pan. Stir-fry for 2-3 minutes.');
+    }
+    
+    // Final seasoning and serving
+    instructions.add('Season with soy sauce, sesame oil, and other Asian seasonings. Taste and adjust.');
+    instructions.add('Garnish with chopped scallions or cilantro. Serve hot with steamed rice.');
+    instructions.add('Enjoy your authentic $recipeName!');
+    
+    return instructions;
+  }
+
+  // Add missing helper methods
+  static String _determineAsianRecipeCategory(List<String> ingredients, int randomVariation) {
+    // Determine category based on ingredients
+    final ingredientStr = ingredients.join(' ').toLowerCase();
+    
+    if (ingredientStr.contains('egg') || ingredientStr.contains('cereal') || 
+        ingredientStr.contains('bread') || ingredientStr.contains('oat')) {
+      return 'Breakfast';
+    } else if (ingredientStr.contains('chicken') || ingredientStr.contains('beef') || 
+               ingredientStr.contains('fish') || ingredientStr.contains('rice')) {
+      return 'Dinner';
+    } else if (randomVariation % 4 == 0) {
+      return 'Lunch';
+    } else if (randomVariation % 5 == 0) {
+      return 'Snack';
+    } else {
+      return 'Dinner';
+    }
+  }
+  
+  static String _getRealisticQuantity(String ingredient, int randomVariation) {
+    final quantities = {
+      'chicken': ['1', '2', '300g', '400g'],
+      'beef': ['250g', '300g', '1', '2'],
+      'rice': ['1', '1.5', '2', '3/4'],
+      'pasta': ['200g', '250g', '300g', '150g'],
+      'egg': ['2', '3', '4', '1'],
+      'tomato': ['2', '3', '1', '4'],
+      'onion': ['1', '2', '1/2', '1'],
+      'potato': ['2', '3', '1', '4'],
+      'milk': ['1', '2', '1/2', '3/4'],
+      'bread': ['2', '4', '1', '3'],
+      'cheese': ['100g', '150g', '1/2', '1'],
+    };
+    
+    final ingredientLower = ingredient.toLowerCase();
+    for (String key in quantities.keys) {
+      if (ingredientLower.contains(key)) {
+        final options = quantities[key]!;
+        return options[randomVariation % options.length];
+      }
+    }
+    
+    return ['1', '2', '1/2', '3/4'][randomVariation % 4];
+  }
+  
+  static String _getRealisticUnit(String ingredient) {
+    final units = {
+      'chicken': 'piece',
+      'beef': 'piece', 
+      'rice': 'cup',
+      'pasta': 'grams',
+      'egg': 'pieces',
+      'tomato': 'pieces',
+      'onion': 'piece',
+      'potato': 'pieces',
+      'milk': 'cup',
+      'bread': 'slices',
+      'cheese': 'cup',
+    };
+    
+    final ingredientLower = ingredient.toLowerCase();
+    for (String key in units.keys) {
+      if (ingredientLower.contains(key)) {
+        return units[key]!;
+      }
+    }
+    
+    return 'portion';
+  }
+  
+  static Map<String, String> _calculateNutritionInfo(List<String> ingredients, int randomVariation) {
+    // Base calories calculation based on ingredients
+    int baseCalories = 150;
+    
+    for (String ingredient in ingredients) {
+      final ingredientLower = ingredient.toLowerCase();
+      if (ingredientLower.contains('chicken') || ingredientLower.contains('beef')) {
+        baseCalories += 200;
+      } else if (ingredientLower.contains('rice') || ingredientLower.contains('pasta')) {
+        baseCalories += 150;
+      } else if (ingredientLower.contains('egg')) {
+        baseCalories += 70;
+      } else if (ingredientLower.contains('cheese')) {
+        baseCalories += 100;
+      } else {
+        baseCalories += 50;
+      }
+    }
+    
+    // Add randomization
+    final finalCalories = baseCalories + (randomVariation % 100);
+    final servings = ingredients.length >= 3 ? '3' : '2';
+    
+    return {
+      'calories': finalCalories.toString(),
+      'servings': servings,
+    };
+  }
+
+  static Future<List<Map<String, dynamic>>> _getAsianDefaultRecipes(int randomVariation) async {
+    final recipes = [
+      {
+        'id': 'asian_default_1_$randomVariation',
+        'name': 'Classic Chinese Egg Fried Rice',
+        'timeRequired': '15 mins',
+        'difficulty': 'Easy',
+        'category': 'Dinner',
+        'description': 'Authentic Chinese-style fried rice with fluffy scrambled eggs, seasoned with soy sauce and sesame oil for the perfect umami flavor.',
+        'ingredients': [
+          {'name': 'cooked rice', 'quantity': '2', 'unit': 'cups', 'available': false},
+          {'name': 'eggs', 'quantity': '2', 'unit': 'pieces', 'available': false},
+          {'name': 'soy sauce', 'quantity': '2', 'unit': 'tbsp', 'available': false},
+          {'name': 'sesame oil', 'quantity': '1', 'unit': 'tsp', 'available': false},
+          {'name': 'scallions', 'quantity': '2', 'unit': 'stalks', 'available': false},
+        ],
+        'instructions': [
+          'Heat oil in a wok over high heat until smoking.',
+          'Scramble eggs until just set, remove and set aside.',
+          'Add rice to wok, breaking up clumps, stir-fry for 2 minutes.',
+          'Return eggs to wok, add soy sauce and sesame oil.',
+          'Stir-fry everything together for 1 minute, garnish with scallions.'
+        ],
+        'nutritionInfo': {'calories': '280', 'servings': '2'},
+        'isAIGenerated': true,
+      },
+      {
+        'id': 'asian_default_2_$randomVariation',
+        'name': 'Japanese Chicken Teriyaki',
+        'timeRequired': '20 mins',
+        'difficulty': 'Medium',
+        'category': 'Dinner',
+        'description': 'Tender chicken glazed with sweet and savory teriyaki sauce, a beloved Japanese dish perfect over steamed rice.',
+        'ingredients': [
+          {'name': 'chicken thigh', 'quantity': '2', 'unit': 'pieces', 'available': false},
+          {'name': 'soy sauce', 'quantity': '3', 'unit': 'tbsp', 'available': false},
+          {'name': 'mirin', 'quantity': '2', 'unit': 'tbsp', 'available': false},
+          {'name': 'brown sugar', 'quantity': '1', 'unit': 'tbsp', 'available': false},
+          {'name': 'vegetable oil', 'quantity': '1', 'unit': 'tbsp', 'available': false},
+        ],
+        'instructions': [
+          'Mix soy sauce, mirin, and brown sugar to make teriyaki sauce.',
+          'Heat oil in a pan over medium-high heat.',
+          'Cook chicken skin-side down for 5 minutes until golden.',
+          'Flip chicken, add teriyaki sauce, and cook 3 more minutes.',
+          'Let sauce reduce and glaze the chicken. Serve with rice.'
+        ],
+        'nutritionInfo': {'calories': '350', 'servings': '2'},
+        'isAIGenerated': true,
+      },
+    ];
+    
+    for (var recipe in recipes) {
       final imageUrl = await RecipeImageService.getRecipeImage(
         recipe['name'] as String,
         recipe['category'] as String,
@@ -788,7 +755,7 @@ ABSOLUTELY CRITICAL:
       recipe['imageUrl'] = imageUrl ?? 'assets/images/food_placeholder.png';
     }
     
-    return selectedVariationSet;
+    return recipes;
   }
 }
 

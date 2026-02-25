@@ -4,7 +4,7 @@ import 'package:fyp_project/ai/recipe_image_service.dart';
 
 class AIRecipeService {
   // Get your free API key from https://platform.openai.com/api-keys
-  static const String _apiKey = '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'; // Add your API key
+  static const String _apiKey = ''; // Add your API key
   static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
 
   static Future<List<Map<String, dynamic>>> generateRecipeSuggestions({

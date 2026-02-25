@@ -6,7 +6,7 @@ class RecipeImageService {
   static const String _unsplashBaseUrl = 'https://api.unsplash.com/search/photos';
   
   // Optional: Get free API key from https://unsplash.com/developers for higher limits
-  static const String _unsplashApiKey = '8K_EljaGEmyOh77nLrZ2sGfq4F2yMGlCo8IxR_xA8c0'; // Leave empty for now, or add your free key
+  static const String _unsplashApiKey = ''; // Leave empty for now, or add your free key
 
   static Future<String?> getRecipeImage(String recipeName, String category) async {
     try {
